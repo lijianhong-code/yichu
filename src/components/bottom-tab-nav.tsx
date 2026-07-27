@@ -16,8 +16,8 @@ export function BottomTabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white/98 backdrop-blur-sm tab-safe-area">
-      <div className="mx-auto flex h-14 max-w-lg items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200/80 bg-white/96 backdrop-blur-md tab-safe-area">
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-around px-2">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href;
           const Icon = tab.icon;
@@ -26,8 +26,8 @@ export function BottomTabNav() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 px-4 py-1 transition-wardrobe',
-                isActive ? 'text-brand-600' : 'text-neutral-500'
+                'flex flex-col items-center justify-center gap-0.5 rounded-lg px-4 py-1 transition-wardrobe',
+                isActive ? 'text-brand-600' : 'text-neutral-500 hover:text-neutral-700'
               )}
             >
               <div className="relative">
@@ -36,17 +36,17 @@ export function BottomTabNav() {
                   strokeWidth={isActive ? 2.2 : 1.75}
                   className={cn(
                     'transition-wardrobe',
-                    isActive && 'fill-brand-100'
+                    isActive && 'fill-brand-100/60'
                   )}
                 />
                 {tab.href === '/ai-styling' && !isActive && (
-                  <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-ai-400" />
+                  <span className="absolute -right-0.5 -top-0.5 h-[5px] w-[5px] rounded-full bg-ai-400" />
                 )}
               </div>
               <span
                 className={cn(
-                  'text-[11px] leading-tight',
-                  isActive ? 'font-medium text-brand-700' : 'font-normal'
+                  'text-[11px] leading-tight transition-wardrobe',
+                  isActive ? 'font-semibold text-brand-700' : 'font-normal'
                 )}
               >
                 {tab.label}

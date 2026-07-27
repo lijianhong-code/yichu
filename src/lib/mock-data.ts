@@ -371,10 +371,10 @@ export const userProfile: UserProfile = {
 
 // AI styling scenarios
 export const quickScenarios = [
-  { label: '通勤上班', icon: 'briefcase' },
-  { label: '约会聚餐', icon: 'heart' },
-  { label: '周末出游', icon: 'sun' },
-  { label: '商务会议', icon: 'presentation' },
+  { label: '通勤上班', icon: '💼' },
+  { label: '约会聚餐', icon: '🍷' },
+  { label: '周末出游', icon: '☀️' },
+  { label: '商务会议', icon: '📋' },
 ];
 
 // Categories for wardrobe filter

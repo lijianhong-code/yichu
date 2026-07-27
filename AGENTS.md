@@ -28,7 +28,12 @@ src/
 ├── lib/
 │   ├── utils.ts              # 通用工具函数
 │   └── mock-data.ts          # Mock数据（衣物、穿搭、用户）
-└── hooks/                    # 自定义Hooks
+├── hooks/                    # 自定义Hooks
+└── test/
+    ├── setup.ts              # 测试环境配置
+    ├── design-tokens.test.ts # 设计Token规范测试
+    ├── mock-data.test.ts     # 数据模型合规测试
+    └── prd-compliance.test.ts # PRD功能验收测试
 ```
 
 ## 设计Token
@@ -39,3 +44,5 @@ src/
 - 构建: `pnpm build`
 - 类型检查: `pnpm ts-check`
 - Lint: `pnpm lint`
+- 单元测试: `pnpm test`
+- 测试监听: `pnpm test:watch`
