@@ -1,345 +1,422 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Search,
   SlidersHorizontal,
   Plus,
   Camera,
   Image as ImageIcon,
-  Layers,
+  Shirt,
   X,
   Heart,
   MoreHorizontal,
+  Edit3,
+  Trash2,
+  Package,
+  LayoutGrid,
+  Grid3x3,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { wardrobeItems, categories, outfits } from '@/lib/mock-data';
-
-type ViewMode = 'items' | 'outfits';
+import type { WardrobeItem } from '@/lib/mock-data';
 
 export default function WardrobePage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('items');
-  const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFab, setShowFab] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<'items' | 'outfits'>('items');
+  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  const filteredItems = useMemo(() => {
+    let items = wardrobeItems;
+    if (activeCategory !== 'all') {
+      items = items.filter((item) => item.category === activeCategory);
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q) ||
+          item.colors.some((c) => c.toLowerCase().includes(q))
+      );
+    }
+    return items;
+  }, [searchQuery, activeCategory]);
 
-  const filteredItems = wardrobeItems.filter((item) => {
-    const matchCategory = activeCategory === 'all' || item.category === activeCategory;
-    const matchSearch = !searchQuery ||
-      item.name.includes(searchQuery) ||
-      item.primaryColor.includes(searchQuery) ||
-      item.category.includes(searchQuery);
-    return matchCategory && matchSearch;
-  });
+  const itemCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: wardrobeItems.length };
+    wardrobeItems.forEach((item) => {
+      counts[item.category] = (counts[item.category] || 0) + 1;
+    });
+    return counts;
+  }, []);
 
-  const selectedItemData = selectedItem ? wardrobeItems.find(i => i.id === selectedItem) : null;
+  const getStatusBadge = (status: WardrobeItem['status']) => {
+    switch (status) {
+      case 'washing':
+        return <Badge className="text-[10px] absolute top-2 right-2 bg-warning/10 text-warning border-warning/20">洗衣中</Badge>;
+      case 'lent':
+        return <Badge className="text-[10px] absolute top-2 right-2 bg-info/10 text-info border-info/20">借出</Badge>;
+      case 'pending_review':
+        return <Badge variant="outline" className="text-[10px] absolute top-2 right-2 border-warning text-warning">待确认</Badge>;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-25 pb-4">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white">
-        <div className="px-4 pb-2 pt-5">
-          <div className="flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/50">
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">我的衣橱</h1>
-              <p className="text-[12px] text-neutral-500 tabular-nums">{wardrobeItems.length} 件单品</p>
+              <h1 className="text-xl font-semibold text-foreground tracking-tight">我的衣橱</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{wardrobeItems.length} 件单品</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowFilter(true)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
 
-        {/* Search bar */}
-        <div className="px-4 pb-2.5">
-          <div className="flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2.5 ring-1 ring-transparent transition-wardrobe focus-within:ring-1 focus-within:ring-brand-600">
-            <Search size={16} className="shrink-0 text-neutral-500" />
-            <input
-              type="text"
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索衣物，如&quot;黑色通勤上衣&quot;"
-              className="flex-1 bg-transparent text-[14px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none"
+              placeholder="搜索衣物，如 &quot;黑色通勤上衣&quot;"
+              className="pl-9 h-10 bg-muted/40 border-border/50 rounded-lg text-sm placeholder:text-muted-foreground/50"
             />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="rounded-full p-0.5 hover:bg-neutral-200 transition-wardrobe">
-                <X size={14} className="text-neutral-500" />
-              </button>
-            )}
-            <button className="ml-0.5 rounded-md p-1.5 transition-wardrobe hover:bg-neutral-100">
-              <SlidersHorizontal size={16} className="text-neutral-600" />
-            </button>
           </div>
-        </div>
 
-        {/* View mode toggle */}
-        <div className="flex items-center border-b border-neutral-100 px-4">
-          <button
-            onClick={() => setViewMode('items')}
-            className={cn(
-              'relative px-4 py-2.5 text-[14px] font-medium transition-wardrobe',
-              viewMode === 'items'
-                ? 'text-brand-700'
-                : 'text-neutral-500 hover:text-neutral-700'
-            )}
-          >
-            单品
-            {viewMode === 'items' && (
-              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-brand-600" />
-            )}
-          </button>
-          <button
-            onClick={() => setViewMode('outfits')}
-            className={cn(
-              'relative px-4 py-2.5 text-[14px] font-medium transition-wardrobe',
-              viewMode === 'outfits'
-                ? 'text-brand-700'
-                : 'text-neutral-500 hover:text-neutral-700'
-            )}
-          >
-            穿搭
-            {viewMode === 'outfits' && (
-              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-brand-600" />
-            )}
-          </button>
-        </div>
-
-        {/* Category chips */}
-        {viewMode === 'items' && (
-          <div className="flex items-center gap-2 overflow-x-auto px-4 py-2.5 scrollbar-hide">
-            {categories.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
-                className={cn(
-                  'shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-wardrobe active:scale-[0.96]',
-                  activeCategory === cat.value
-                    ? 'bg-brand-100 text-brand-700'
-                    : 'bg-white text-neutral-600 ring-1 ring-neutral-200/70 hover:ring-brand-600/50'
-                )}
+          {/* View mode tabs */}
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'items' | 'outfits')} className="mb-3">
+            <TabsList className="h-9 bg-muted/40 rounded-lg p-0.5">
+              <TabsTrigger
+                value="items"
+                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        )}
+                <LayoutGrid className="h-3.5 w-3.5" />
+                单品
+              </TabsTrigger>
+              <TabsTrigger
+                value="outfits"
+                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Grid3x3 className="h-3.5 w-3.5" />
+                穿搭
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Category chips */}
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex gap-2 pb-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setActiveCategory(cat.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                    activeCategory === cat.value
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'bg-muted/40 text-muted-foreground border border-border/30 hover:bg-muted/60'
+                  }`}
+                >
+                  {cat.label}
+                  <span className="ml-1 opacity-60">{itemCounts[cat.value] || 0}</span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </header>
 
       {/* Content */}
-      <div className="px-4 py-3">
+      <div className="px-4 pt-4">
         {viewMode === 'items' ? (
-          <div className="grid grid-cols-2 gap-3 stagger-children">
-            {filteredItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
-                className={cn(
-                  'group overflow-hidden rounded-lg bg-white transition-wardrobe active:scale-[0.98]',
-                  selectedItem === item.id
-                    ? 'ring-2 ring-brand-600'
-                    : 'ring-1 ring-neutral-200/50 hover:ring-neutral-300'
-                )}
-              >
-                {/* Image area - 4:5 ratio */}
-                <div className="relative aspect-[4/5] bg-neutral-50 p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="h-full w-full object-contain transition-wardrobe group-hover:scale-[1.02]"
-                  />
-                  {item.status === 'pending_review' && (
-                    <span className="absolute right-2 top-2 rounded bg-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-warning-fg">
-                      待确认
-                    </span>
-                  )}
-                  {item.status === 'washing' && (
-                    <span className="absolute right-2 top-2 rounded bg-info-bg px-1.5 py-0.5 text-[10px] font-medium text-info-fg">
-                      洗衣中
-                    </span>
-                  )}
+          <>
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center mb-4">
+                  <Shirt className="h-8 w-8 text-muted-foreground/50" />
                 </div>
-                {/* Name */}
-                <div className="px-2.5 py-2">
-                  <p className="truncate text-[13px] font-medium text-neutral-900">
-                    {item.name}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-neutral-500">
-                    {item.category} · {item.colors[0]}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
+                <p className="text-sm font-medium text-foreground mb-1">没有找到匹配的衣物</p>
+                <p className="text-xs text-muted-foreground">试试其他搜索词或筛选条件</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {filteredItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedItem(item)}
+                    className="group relative rounded-lg bg-muted/30 border border-border/30 overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.98] text-left"
+                  >
+                    {/* Image area - 4:5 ratio */}
+                    <div className="relative aspect-[4/5] bg-muted/50 overflow-hidden">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                      />
+                      {getStatusBadge(item.status)}
+                    </div>
+                    {/* Info */}
+                    <div className="p-2.5">
+                      <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.subCategory}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="grid grid-cols-2 gap-3 stagger-children">
+          /* Outfits view */
+          <div className="grid grid-cols-2 gap-3">
             {outfits.map((outfit) => (
               <button
                 key={outfit.id}
-                className="group overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200/50 transition-wardrobe hover:ring-neutral-300 active:scale-[0.98]"
+                className="group relative rounded-lg bg-muted/30 border border-border/30 overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20 text-left"
               >
                 {/* Outfit thumbnail - 3:4 ratio */}
-                <div className="relative aspect-[3/4] bg-neutral-50 p-3">
-                  <div className="flex h-full flex-wrap items-center justify-center gap-1.5">
+                <div className="relative aspect-[3/4] bg-muted/50 p-3 flex items-center justify-center">
+                  <div className="grid grid-cols-2 gap-1.5 w-full">
                     {outfit.items.slice(0, 4).map((item) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={item.id}
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="h-14 w-11 rounded object-contain bg-white p-0.5 ring-1 ring-neutral-100"
-                      />
+                      <div key={item.id} className="aspect-square rounded-md bg-background overflow-hidden">
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
                     ))}
                   </div>
                   {outfit.source === 'ai_text' && (
-                    <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded bg-ai-50 px-1.5 py-0.5 text-[10px] font-medium text-ai-600">
-                      <Sparkles size={8} />
-                      AI
-                    </span>
+                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-ai-50 flex items-center justify-center">
+                      <span className="text-[8px] text-ai-600 font-medium">AI</span>
+                    </div>
                   )}
                 </div>
-                <div className="px-2.5 py-2">
-                  <p className="truncate text-[13px] font-medium text-neutral-900">
-                    {outfit.name}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-neutral-500">
-                    {outfit.occasion}
-                    {outfit.lastWorn && ` · 最近 ${outfit.lastWorn.slice(5)}`}
-                  </p>
+                {/* Info */}
+                <div className="p-2.5">
+                  <p className="text-xs font-medium text-foreground truncate">{outfit.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{outfit.occasion}</p>
                 </div>
               </button>
             ))}
-          </div>
-        )}
-
-        {filteredItems.length === 0 && viewMode === 'items' && (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
-              <Search size={24} className="text-neutral-400" />
-            </div>
-            <p className="mt-4 text-[14px] text-neutral-600">没有找到匹配的衣物</p>
-            <p className="mt-1 text-[12px] text-neutral-500">试试调整搜索词或筛选条件</p>
           </div>
         )}
       </div>
 
       {/* FAB */}
-      <div className="fixed bottom-20 right-4 z-40">
-        {showFab && (
-          <div className="mb-3 overflow-hidden rounded-xl bg-white shadow-[0_8px_24px_rgba(24,28,26,0.12)] animate-scale-in">
-            <button className="flex w-full items-center gap-3 px-4 py-3 transition-wardrobe hover:bg-neutral-50 active:bg-neutral-100">
-              <Camera size={18} className="text-brand-600" />
-              <span className="text-[13px] text-neutral-900">拍摄单件</span>
-            </button>
-            <div className="mx-3 border-t border-neutral-100" />
-            <button className="flex w-full items-center gap-3 px-4 py-3 transition-wardrobe hover:bg-neutral-50 active:bg-neutral-100">
-              <ImageIcon size={18} className="text-brand-600" />
-              <span className="text-[13px] text-neutral-900">相册批量导入</span>
-            </button>
-            <div className="mx-3 border-t border-neutral-100" />
-            <button className="flex w-full items-center gap-3 px-4 py-3 transition-wardrobe hover:bg-neutral-50 active:bg-neutral-100">
-              <Layers size={18} className="text-brand-600" />
-              <span className="text-[13px] text-neutral-900">添加整套穿搭</span>
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => setShowFab(!showFab)}
-          className={cn(
-            'flex h-[52px] w-[52px] items-center justify-center rounded-full shadow-[0_8px_24px_rgba(24,28,26,0.12)] transition-wardrobe',
-            showFab
-              ? 'bg-neutral-900 rotate-45'
-              : 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20'
-          )}
+      <div className="fixed bottom-24 right-4 z-30">
+        <Button
+          size="icon"
+          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+          onClick={() => setShowAddMenu(true)}
         >
-          <Plus size={24} className="text-white" />
-        </button>
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
 
-      {/* Item detail drawer */}
-      {selectedItemData && (
-        <div className="fixed inset-0 z-50 backdrop-fade" onClick={() => setSelectedItem(null)}>
-          <div
-            className="absolute bottom-0 left-0 right-0 animate-slide-up rounded-t-xl bg-white"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-8 rounded-full bg-neutral-200" />
-            </div>
-
-            <div className="max-h-[70vh] overflow-y-auto px-5 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[17px] font-semibold text-neutral-900">单品详情</h3>
-                <button onClick={() => setSelectedItem(null)} className="rounded-full p-1.5 hover:bg-neutral-100 transition-wardrobe">
-                  <X size={18} className="text-neutral-500" />
-                </button>
+      {/* Add Menu Sheet */}
+      <Sheet open={showAddMenu} onOpenChange={setShowAddMenu}>
+        <SheetContent className="sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>添加衣物</SheetTitle>
+            <SheetDescription>选择添加方式</SheetDescription>
+          </SheetHeader>
+          <div className="py-6 space-y-3">
+            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Camera className="h-5 w-5 text-primary" />
               </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-foreground">拍摄单件</p>
+                <p className="text-xs text-muted-foreground">拍照自动识别衣物信息</p>
+              </div>
+            </button>
+            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ImageIcon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-foreground">相册批量导入</p>
+                <p className="text-xs text-muted-foreground">从相册选择多张图片</p>
+              </div>
+            </button>
+            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Shirt className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-foreground">添加整套穿搭</p>
+                <p className="text-xs text-muted-foreground">手动创建一套搭配</p>
+              </div>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
+      {/* Item Detail Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          {selectedItem && (
+            <>
               {/* Image */}
-              <div className="mx-auto aspect-square w-44 rounded-lg bg-neutral-50 p-5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selectedItemData.imageUrl} alt={selectedItemData.name} className="h-full w-full object-contain" />
+              <div className="aspect-square bg-muted/50 relative">
+                <img
+                  src={selectedItem.imageUrl}
+                  alt={selectedItem.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
-
-              <h4 className="mt-4 text-center text-[15px] font-semibold text-neutral-900">{selectedItemData.name}</h4>
-              <p className="mt-1 text-center text-[12px] text-neutral-500">
-                已穿 {selectedItemData.wearCount} 次
-                {selectedItemData.lastWorn && ` · 最近 ${selectedItemData.lastWorn}`}
-              </p>
-
-              {/* Attributes grid */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {[
-                  { label: '品类', value: `${selectedItemData.category} / ${selectedItemData.subCategory}` },
-                  { label: '颜色', value: selectedItemData.colors.join(', ') },
-                  { label: '季节', value: selectedItemData.season.join(', ') },
-                  { label: '场合', value: selectedItemData.occasions.join(', ') },
-                  { label: '风格', value: selectedItemData.style.join(', ') },
-                  { label: '材质', value: selectedItemData.material || '-' },
-                ].map((attr) => (
-                  <div key={attr.label} className="rounded-lg bg-neutral-50 p-2.5">
-                    <span className="text-[11px] text-neutral-500">{attr.label}</span>
-                    <p className="mt-0.5 text-[13px] font-medium text-neutral-900 truncate">{attr.value}</p>
+              {/* Info */}
+              <div className="p-4 space-y-4">
+                <div>
+                  <DialogHeader>
+                    <DialogTitle className="text-lg">{selectedItem.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">{selectedItem.category}</Badge>
+                    <Badge variant="outline" className="text-xs">{selectedItem.subCategory}</Badge>
+                    {selectedItem.brand && (
+                      <span className="text-xs text-muted-foreground">{selectedItem.brand}</span>
+                    )}
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Attributes */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">颜色</p>
+                    <p className="text-foreground">{selectedItem.colors.join(', ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">材质</p>
+                    <p className="text-foreground">{selectedItem.material || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">季节</p>
+                    <p className="text-foreground">{selectedItem.season.join(', ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">穿着次数</p>
+                    <p className="text-foreground">{selectedItem.wearCount} 次</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 text-sm">
+                    用它搭配
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-10">
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-10">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Filter Sheet */}
+      <Sheet open={showFilter} onOpenChange={setShowFilter}>
+        <SheetContent className="sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>筛选</SheetTitle>
+            <SheetDescription>按条件筛选你的衣物</SheetDescription>
+          </SheetHeader>
+          <div className="py-4 space-y-5">
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">品类</p>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.value}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                      activeCategory === cat.value
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'bg-muted/40 text-muted-foreground border border-border/30'
+                    }`}
+                    onClick={() => {
+                      setActiveCategory(cat.value);
+                    }}
+                  >
+                    {cat.label}
+                  </button>
                 ))}
               </div>
-
-              {/* Actions */}
-              <div className="mt-5 flex gap-3">
-                <button className="flex-1 rounded-lg bg-brand-600 py-2.5 text-[14px] font-medium text-white transition-wardrobe hover:bg-brand-700 active:scale-[0.98]">
-                  用它搭配
-                </button>
-                <button className="flex-1 rounded-lg bg-white py-2.5 text-[14px] font-medium text-neutral-900 ring-1 ring-neutral-200 transition-wardrobe hover:bg-neutral-50 active:scale-[0.98]">
-                  编辑
-                </button>
-                <button className="flex items-center justify-center rounded-lg bg-white px-3 py-2.5 ring-1 ring-neutral-200 transition-wardrobe hover:bg-neutral-50">
-                  <MoreHorizontal size={18} className="text-neutral-600" />
-                </button>
+            </div>
+            <Separator />
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">颜色</p>
+              <div className="flex flex-wrap gap-2">
+                {['黑色', '白色', '蓝色', '灰色', '棕色'].map((color) => (
+                  <button
+                    key={color}
+                    className="px-3 py-1.5 rounded-full text-xs bg-muted/40 text-muted-foreground border border-border/30"
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">季节</p>
+              <div className="flex flex-wrap gap-2">
+                {['春夏', '春秋', '秋冬', '四季'].map((season) => (
+                  <button
+                    key={season}
+                    className="px-3 py-1.5 rounded-full text-xs bg-muted/40 text-muted-foreground border border-border/30"
+                  >
+                    {season}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-      )}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border flex gap-3">
+            <Button variant="outline" className="flex-1 h-10">重置</Button>
+            <Button className="flex-1 h-10 bg-primary hover:bg-primary/90" onClick={() => setShowFilter(false)}>
+              查看 {filteredItems.length} 件结果
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
-  );
-}
-
-function Sparkles(props: { size?: number; className?: string }) {
-  return (
-    <svg
-      width={props.size || 12}
-      height={props.size || 12}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={props.className}
-    >
-      <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
-    </svg>
   );
 }

@@ -3,234 +3,438 @@
 import { useState } from 'react';
 import {
   ChevronRight,
-  Sparkles,
-  TrendingUp,
-  Shirt,
-  Calendar,
+  Settings,
   Shield,
   HelpCircle,
   LogOut,
+  Sparkles,
+  Shirt,
+  Calendar,
+  TrendingUp,
   Heart,
   Palette,
-  Bell,
-  Download,
-  Trash2,
+  X as XIcon,
+  User,
+  MapPin,
   Clock,
-  Sun,
-  Moon,
-  CloudRain,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { userProfile, wearLogs } from '@/lib/mock-data';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { userProfile, wearLogs, wardrobeItems } from '@/lib/mock-data';
 
 export default function ProfilePage() {
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [showWearLog, setShowWearLog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
-  // Wear data for mini chart
-  const weeklyData = [
-    { day: '一', count: 3 },
-    { day: '二', count: 5 },
-    { day: '三', count: 2 },
-    { day: '四', count: 6 },
-    { day: '五', count: 4 },
-    { day: '六', count: 5 },
-    { day: '日', count: 3 },
-  ];
-  const maxCount = Math.max(...weeklyData.map(d => d.count));
+  const utilizationRate = 64;
+  const adoptionRate = 72;
 
   return (
-    <div className="min-h-screen bg-neutral-25 pb-4">
-      {/* Header / Profile card */}
-      <header className="bg-white px-4 pb-5 pt-6">
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <header className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 ring-2 ring-brand-600/10">
-            <span className="text-[20px] font-semibold text-brand-700">
+          <Avatar className="h-16 w-16 border-2 border-border/50">
+            <AvatarFallback className="bg-primary/10 text-primary text-lg font-medium">
               {userProfile.name.charAt(0)}
-            </span>
-          </div>
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1">
-            <h1 className="text-[18px] font-semibold tracking-tight text-neutral-900">{userProfile.name}</h1>
-            <p className="mt-0.5 text-[12px] text-neutral-500">
-              {userProfile.city} · 已陪伴 <span className="tabular-nums text-neutral-600">{userProfile.wardrobeDays}</span> 天
-            </p>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">{userProfile.name}</h1>
+            <div className="flex items-center gap-1.5 mt-1">
+              <MapPin className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">{userProfile.city}</span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">衣橱建立 {userProfile.wardrobeDays} 天</span>
+            </div>
           </div>
-          <button className="rounded-full p-2 hover:bg-neutral-100 transition-wardrobe">
-            <ChevronRight size={16} className="text-neutral-400 rotate-0" />
-          </button>
         </div>
 
-        {/* Stats - clean divider style */}
-        <div className="mt-5 flex items-center">
-          <div className="flex-1 text-center">
-            <p className="text-[22px] font-semibold text-neutral-900 tabular-nums">{userProfile.totalItems}</p>
-            <p className="mt-0.5 text-[11px] text-neutral-500">件单品</p>
+        {/* Stats row */}
+        <div className="flex items-center gap-4 mt-4">
+          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
+            <p className="text-xl font-semibold text-foreground">{userProfile.totalItems}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">衣物</p>
           </div>
-          <div className="h-8 w-px bg-neutral-200" />
-          <div className="flex-1 text-center">
-            <p className="text-[22px] font-semibold text-neutral-900 tabular-nums">{userProfile.totalOutfits}</p>
-            <p className="mt-0.5 text-[11px] text-neutral-500">套穿搭</p>
+          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
+            <p className="text-xl font-semibold text-foreground">{userProfile.totalOutfits}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">穿搭</p>
           </div>
-          <div className="h-8 w-px bg-neutral-200" />
-          <div className="flex-1 text-center">
-            <p className="text-[22px] font-semibold text-brand-600 tabular-nums">68%</p>
-            <p className="mt-0.5 text-[11px] text-neutral-500">利用率</p>
+          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
+            <p className="text-xl font-semibold text-primary">{utilizationRate}%</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">利用率</p>
           </div>
         </div>
       </header>
 
-      {/* AI眼中的我 */}
-      <section className="px-4 pt-4 pb-3">
-        <div className="rounded-xl bg-white p-4 ring-1 ring-neutral-200/50">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-ai-50">
-              <Sparkles size={12} className="text-ai-400" />
+      <Separator />
+
+      {/* AI Insight about me */}
+      <section className="px-4 py-5">
+        <Card className="border-border/50 bg-gradient-to-br from-ai-50/30 to-background overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-ai-100 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="h-4.5 w-4.5 text-ai-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-ai-600 mb-1">AI 眼中的我</p>
+                <p className="text-sm text-foreground leading-relaxed">
+                  你偏好简约、干练的风格，喜欢黑白色系。最近开始尝试更多蓝色单品，商务休闲是你的主要穿搭方向。
+                </p>
+                <button
+                  onClick={() => setShowPreferences(true)}
+                  className="flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
+                >
+                  查看详情
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-            <h2 className="text-[14px] font-semibold text-neutral-900">AI 眼中的我</h2>
-          </div>
-          <div className="mt-3.5 space-y-3">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
-              <p className="text-[13px] leading-relaxed text-neutral-600">
-                你偏好<span className="font-medium text-neutral-900">简约、干练</span>的风格，常穿黑色、白色和深蓝色单品
-              </p>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ai-400" />
-              <p className="text-[13px] leading-relaxed text-neutral-600">
-                <span className="font-medium text-neutral-900">推断</span>：通勤日偏好正式度适中的搭配，周末更倾向宽松舒适
-              </p>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
-              <p className="text-[13px] leading-relaxed text-neutral-600">
-                你明确不喜欢<span className="font-medium text-neutral-900">荧光色和大规模印花</span>
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => toggleSection('preferences')}
-            className="mt-3.5 flex w-full items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 transition-wardrobe hover:bg-neutral-100"
-          >
-            <span className="text-[12px] font-medium text-brand-600">查看和管理所有偏好</span>
-            <ChevronRight size={14} className="text-neutral-400" />
-          </button>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Monthly insight */}
-      <section className="px-4 pb-3">
-        <div className="rounded-xl bg-white p-4 ring-1 ring-neutral-200/50">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-50">
-              <TrendingUp size={12} className="text-brand-600" />
+      <section className="px-4 pb-5">
+        <Card className="border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium text-foreground">本月洞察</p>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">7月</Badge>
             </div>
-            <h2 className="text-[14px] font-semibold text-neutral-900">本月洞察</h2>
-            <span className="ml-auto text-[11px] text-neutral-500">7月</span>
-          </div>
 
-          <div className="mt-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[32px] font-semibold text-brand-600 tabular-nums leading-none">18</span>
-              <span className="text-[13px] text-neutral-600">件衣物被穿过</span>
-            </div>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-neutral-500">
-              衣橱利用率 <span className="font-medium text-neutral-700">64%</span>，比上月提升 5%。最常穿的是白色纯棉T恤（5次）
-            </p>
-
-            {/* Mini bar chart */}
-            <div className="mt-4 flex items-end gap-1.5">
-              {weeklyData.map((d, i) => (
-                <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
-                  <div
-                    className="w-full rounded-sm transition-all duration-300"
-                    style={{
-                      height: `${(d.count / maxCount) * 40}px`,
-                      backgroundColor: i === 3 ? '#2F6B57' : '#E7F0EB',
-                    }}
-                  />
-                  <span className="text-[10px] text-neutral-500">{d.day}</span>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-muted-foreground">衣橱利用率</span>
+                  <span className="text-xs font-medium text-foreground">{utilizationRate}%</span>
                 </div>
-              ))}
+                <Progress value={utilizationRate} className="h-2" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-muted-foreground">AI 搭配采用率</span>
+                  <span className="text-xs font-medium text-foreground">{adoptionRate}%</span>
+                </div>
+                <Progress value={adoptionRate} className="h-2" />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500">近7天穿着趋势</span>
-              <button className="text-[11px] font-medium text-brand-600">详情</button>
-            </div>
+
+            <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+              本月穿了 18 件衣物，有 5 件超过两周未穿。建议尝试给它们新的搭配机会。
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* Menu items */}
+      <section className="px-4 py-4 space-y-1">
+        {/* Wear log */}
+        <button
+          onClick={() => setShowWearLog(true)}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <Calendar className="h-4 w-4 text-foreground" />
           </div>
-        </div>
-      </section>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">穿着记录</p>
+            <p className="text-xs text-muted-foreground">查看每日穿搭历史</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
-      {/* Menu items - Main */}
-      <section className="px-4 pb-3">
-        <div className="overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200/50">
-          <MenuItem icon={Shirt} label="穿着记录" subtitle="查看每日穿搭历史" />
-          <MenuDivider />
-          <MenuItem icon={Heart} label="风格与穿着偏好" subtitle="管理你的风格、颜色和场合偏好" />
-          <MenuDivider />
-          <MenuItem icon={Palette} label="身形与尺码" subtitle="身高、尺码和版型偏好" />
-          <MenuDivider />
-          <MenuItem icon={Calendar} label="衣橱报告" subtitle="品类分布、颜色结构分析" badge="即将上线" />
-        </div>
-      </section>
+        {/* Style preferences */}
+        <button
+          onClick={() => setShowPreferences(true)}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <Palette className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">风格与穿着偏好</p>
+            <p className="text-xs text-muted-foreground">管理你的穿搭偏好设置</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
-      {/* Settings */}
-      <section className="px-4 pb-3">
-        <div className="overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200/50">
-          <MenuItem icon={Bell} label="通知与提醒" />
-          <MenuDivider />
-          <MenuItem icon={Shield} label="隐私与权限" />
-          <MenuDivider />
-          <MenuItem icon={Download} label="导出衣橱数据" />
-          <MenuDivider />
-          <MenuItem icon={Trash2} label="清除 AI 偏好" subtitle="重置 AI 学习到的偏好" />
-          <MenuDivider />
-          <MenuItem icon={HelpCircle} label="帮助与反馈" />
-        </div>
+        {/* Body & size */}
+        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <User className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">身形与尺码</p>
+            <p className="text-xs text-muted-foreground">选填，帮助更精准推荐</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        <Separator className="my-2" />
+
+        {/* Settings */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <Settings className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">设置</p>
+            <p className="text-xs text-muted-foreground">通知、隐私与数据管理</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        {/* Privacy */}
+        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <Shield className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">隐私设置</p>
+            <p className="text-xs text-muted-foreground">权限管理与数据控制</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        {/* Help */}
+        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
+          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+            <HelpCircle className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-foreground">帮助与反馈</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
       </section>
 
       {/* Danger zone */}
-      <section className="px-4 pb-8">
-        <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-[14px] text-error-fg ring-1 ring-error-bg/60 transition-wardrobe hover:bg-error-bg active:scale-[0.98]">
-          <LogOut size={16} />
-          注销账号
+      <section className="px-4 pt-2 pb-8">
+        <Separator className="mb-4" />
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-destructive/5 transition-colors"
+        >
+          <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-destructive">注销账号</p>
+            <p className="text-xs text-muted-foreground">删除所有数据，不可恢复</p>
+          </div>
         </button>
       </section>
+
+      {/* Preferences Sheet */}
+      <Sheet open={showPreferences} onOpenChange={setShowPreferences}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>风格与穿着偏好</SheetTitle>
+            <SheetDescription>管理你的穿搭偏好，AI 会据此推荐</SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-160px)]">
+            <div className="py-4 space-y-5">
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">常用场合</p>
+                <div className="flex flex-wrap gap-2">
+                  {['通勤', '商务', '休闲', '约会', '运动'].map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">喜欢的风格</p>
+                <div className="flex flex-wrap gap-2">
+                  {userProfile.stylePreferences.map((style) => (
+                    <Badge key={style} variant="secondary" className="text-xs">{style}</Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">颜色偏好</p>
+                <div className="flex flex-wrap gap-2">
+                  {userProfile.colorPreferences.map((color) => (
+                    <Badge key={color} variant="outline" className="text-xs">{color}</Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">不喜欢</p>
+                <div className="flex flex-wrap gap-2">
+                  {userProfile.avoidItems.map((item) => (
+                    <Badge key={item} variant="destructive" className="text-xs bg-destructive/10 text-destructive border-destructive/20">{item}</Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-3">AI 推断的偏好</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">不喜欢高跟鞋通勤</p>
+                      <p className="text-[10px] text-muted-foreground">基于 3 次行为推断</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">偏好宽松版型</p>
+                      <p className="text-[10px] text-muted-foreground">基于 5 次行为推断</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Wear Log Sheet */}
+      <Sheet open={showWearLog} onOpenChange={setShowWearLog}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>穿着记录</SheetTitle>
+            <SheetDescription>你的每日穿搭历史</SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-160px)]">
+            <div className="py-4 space-y-2">
+              {wearLogs.map((log) => (
+                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <div className="text-center min-w-[40px]">
+                    <p className="text-xs font-medium text-foreground">{log.date.slice(-2)}</p>
+                    <p className="text-[10px] text-muted-foreground">日</p>
+                  </div>
+                  <Separator orientation="vertical" className="h-8" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground">{log.occasion}</p>
+                    <p className="text-[10px] text-muted-foreground">{log.weather} · {log.items.length} 件</p>
+                  </div>
+                  {log.feedback && (
+                    <Badge variant={log.feedback === '刚好' ? 'default' : 'secondary'} className="text-[10px]">
+                      {log.feedback}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Settings Sheet */}
+      <Sheet open={showSettings} onOpenChange={setShowSettings}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>设置</SheetTitle>
+            <SheetDescription>管理应用设置</SheetDescription>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">推送通知</p>
+                <p className="text-xs text-muted-foreground">接收穿搭提醒和洞察</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">天气自动获取</p>
+                <p className="text-xs text-muted-foreground">自动获取当前位置天气</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">高清图片</p>
+                <p className="text-xs text-muted-foreground">使用高清图片（消耗更多流量）</p>
+              </div>
+              <Switch />
+            </div>
+            <Separator />
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">数据管理</p>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start h-10 text-sm" size="sm">
+                  导出衣橱数据
+                </Button>
+                <Button variant="outline" className="w-full justify-start h-10 text-sm" size="sm">
+                  清除 AI 偏好
+                </Button>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              确认注销账号
+            </DialogTitle>
+            <DialogDescription>
+              此操作将永久删除你的所有数据，包括衣物图片、穿搭记录、偏好设置等。操作不可恢复。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1 h-10" onClick={() => setShowDeleteConfirm(false)}>
+              取消
+            </Button>
+            <Button variant="destructive" className="flex-1 h-10">
+              确认注销
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function MenuItem({
-  icon: Icon,
-  label,
-  subtitle,
-  badge,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  subtitle?: string;
-  badge?: string;
-}) {
-  return (
-    <button className="flex w-full items-center gap-3 px-4 py-3.5 transition-wardrobe hover:bg-neutral-50 active:bg-neutral-100">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-50">
-        <Icon size={16} className="text-neutral-600" />
-      </div>
-      <div className="flex-1 text-left">
-        <p className="text-[14px] text-neutral-900">{label}</p>
-        {subtitle && <p className="mt-0.5 text-[11px] text-neutral-500">{subtitle}</p>}
-      </div>
-      {badge && (
-        <span className="rounded-full bg-ai-50 px-2 py-0.5 text-[10px] font-medium text-ai-600">{badge}</span>
-      )}
-      <ChevronRight size={14} className="shrink-0 text-neutral-300" />
-    </button>
-  );
-}
-
-function MenuDivider() {
-  return <div className="mx-4 border-t border-neutral-100" />;
-}
+// Need to import ScrollArea for the sheets
+import { ScrollArea } from '@/components/ui/scroll-area';

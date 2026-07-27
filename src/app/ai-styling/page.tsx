@@ -1,68 +1,115 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Send,
-  CloudSun,
+  Sparkles,
   ChevronLeft,
-  Clock,
   Lock,
+  Unlock,
   RefreshCw,
   Check,
-  Sparkles,
   X,
-  Shirt,
+  Image as ImageIcon,
+  History,
   MoreHorizontal,
-  Save,
-  Share2,
-  Copy,
+  ThermometerSun,
+  ArrowRightLeft,
+  Shirt,
+  Clock,
+  Briefcase,
+  Wine,
+  Sun,
+  ClipboardList,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { wardrobeItems, quickScenarios } from '@/lib/mock-data';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { todayOutfit, quickScenarios, wardrobeItems } from '@/lib/mock-data';
+import type { WardrobeItem } from '@/lib/mock-data';
+
+const iconMap: Record<string, React.ReactNode> = {
+  Briefcase: <Briefcase className="h-4 w-4" />,
+  Wine: <Wine className="h-4 w-4" />,
+  Sun: <Sun className="h-4 w-4" />,
+  ClipboardList: <ClipboardList className="h-4 w-4" />,
+};
 
 type PageState = 'input' | 'loading' | 'result';
 
-const generatedOutfit = {
-  items: [wardrobeItems[2], wardrobeItems[0], wardrobeItems[1], wardrobeItems[5], wardrobeItems[11]],
-  name: '商务休闲通勤',
-  explanation: '黑色西装搭配白T和牛仔裤，正式但不刻板，适合今日天气和通勤场合',
-  weather: '18-24°C 多云',
-  occasion: '商务休闲',
-  reasons: [
-    '黑色西装提升正式度，适合客户会面',
-    '白T+牛仔裤平衡休闲感，不会过于严肃',
-    '温度18-24°C，西装厚度适中',
-  ],
-};
-
-const candidateReplacements: Record<string, typeof wardrobeItems> = {
-  'item-001': [wardrobeItems[3], wardrobeItems[7]],
-  'item-002': [wardrobeItems[4]],
-  'item-003': [wardrobeItems[10]],
-  'item-005': [wardrobeItems[6], wardrobeItems[11]],
-  'item-011': [wardrobeItems[6]],
-};
+const loadingStages = [
+  { label: '正在理解场合', duration: 800 },
+  { label: '正在查询天气', duration: 600 },
+  { label: '正在从 86 件衣物中筛选', duration: 1200 },
+  { label: '正在生成搭配方案', duration: 1000 },
+];
 
 export default function AIStylingPage() {
   const [pageState, setPageState] = useState<PageState>('input');
   const [inputValue, setInputValue] = useState('');
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [lockedItems, setLockedItems] = useState<Set<string>>(new Set());
-  const [worn, setWorn] = useState(false);
+  const [showReplacement, setShowReplacement] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [undoVisible, setUndoVisible] = useState(false);
+
+  const outfit = todayOutfit;
 
   const handleGenerate = () => {
+    if (!inputValue.trim()) return;
     setPageState('loading');
-    setTimeout(() => {
-      setPageState('result');
-    }, 3000);
+    setCurrentStage(0);
+    setProgress(0);
   };
 
-  const handleWorn = () => {
-    setWorn(true);
-    setTimeout(() => setWorn(false), 2000);
+  useEffect(() => {
+    if (pageState !== 'loading') return;
+
+    let totalElapsed = 0;
+    const totalDuration = loadingStages.reduce((sum, s) => sum + s.duration, 0);
+
+    const timers = loadingStages.map((stage, index) => {
+      return setTimeout(() => {
+        setCurrentStage(index);
+        totalElapsed = loadingStages.slice(0, index + 1).reduce((sum, s) => sum + s.duration, 0);
+        setProgress(Math.round((totalElapsed / totalDuration) * 100));
+      }, loadingStages.slice(0, index).reduce((sum, s) => sum + s.duration, 0));
+    });
+
+    const completeTimer = setTimeout(() => {
+      setProgress(100);
+      setTimeout(() => setPageState('result'), 300);
+    }, totalDuration);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(completeTimer);
+    };
+  }, [pageState]);
+
+  const handleItemSelect = (item: WardrobeItem) => {
+    setSelectedItem(item);
+    setShowReplacement(true);
   };
 
   const toggleLock = (itemId: string) => {
@@ -74,436 +121,374 @@ export default function AIStylingPage() {
     });
   };
 
-  const handleReplace = useCallback((itemId: string) => {
-    setUndoVisible(true);
-    setTimeout(() => setUndoVisible(false), 4000);
-  }, []);
-
-  const candidates = selectedItemId ? candidateReplacements[selectedItemId] || [] : [];
+  const handleBack = () => {
+    setPageState('input');
+    setCurrentStage(0);
+    setProgress(0);
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-25">
-      {pageState === 'input' && (
-        <>
-          {/* Context bar */}
-          <header className="px-4 pb-2 pt-5">
-            <h1 className="text-[20px] font-semibold tracking-tight text-neutral-900">AI 搭配</h1>
-            <button className="mt-2.5 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] text-neutral-600 ring-1 ring-neutral-200/60 transition-wardrobe hover:ring-neutral-300">
-              <CloudSun size={14} className="text-ai-400" />
-              <span>上海 · 24°C · 多云</span>
-              <span className="mx-1 text-neutral-200">|</span>
-              <span>7月24日</span>
-            </button>
-          </header>
+    <TooltipProvider>
+      <div className="min-h-screen bg-background pb-24">
+        {/* Input State */}
+        {pageState === 'input' && (
+          <>
+            {/* Header */}
+            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/50">
+              <div className="px-4 py-3">
+                <h1 className="text-lg font-semibold text-foreground tracking-tight">AI 搭配</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">描述你的需求，AI 从衣橱中为你搭配</p>
+              </div>
+            </header>
 
-          {/* Input area */}
-          <section className="px-4 py-3">
-            <div className="rounded-xl bg-white p-4 ring-1 ring-neutral-200/60">
-              <div className="flex items-start gap-2.5">
-                <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ai-400" />
-                <textarea
+            {/* Context bar */}
+            <div className="px-4 pt-4">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/30">
+                <ThermometerSun className="h-4 w-4 text-accent-foreground" />
+                <span className="text-xs text-foreground">上海</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground">22-28°C 多云</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground">今天</span>
+              </div>
+            </div>
+
+            {/* Input area */}
+            <div className="px-4 pt-4">
+              <div className="relative">
+                <Textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气，要走很多路"
-                  className="min-h-[88px] flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-neutral-900 placeholder:text-neutral-500 focus:outline-none"
+                  placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
+                  className="min-h-[100px] pr-12 bg-muted/30 border-border/50 rounded-lg text-sm resize-none placeholder:text-muted-foreground/50"
                 />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1 rounded-md bg-neutral-50 px-2 py-1 text-[11px] text-neutral-600 transition-wardrobe hover:bg-neutral-100">
-                    <Shirt size={12} />
-                    必穿单品
-                  </button>
-                  <button className="flex items-center gap-1 rounded-md bg-ai-50 px-2 py-1 text-[11px] text-ai-600 transition-wardrobe hover:bg-ai-100/30">
-                    <Sparkles size={12} />
-                    参考图
-                  </button>
+                <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                  {/* AI indicator dot - 4px per PRD */}
+                  <div className="h-1 w-1 rounded-full bg-ai-400" />
+                  <Button
+                    size="icon"
+                    className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90"
+                    onClick={handleGenerate}
+                    disabled={!inputValue.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
-                <button
-                  onClick={handleGenerate}
-                  className="flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-[13px] font-medium text-white transition-wardrobe hover:bg-brand-700 active:scale-[0.97] shadow-sm shadow-brand-600/15"
-                >
-                  <Send size={14} />
-                  开始搭配
-                </button>
+              </div>
+
+              {/* Quick scenarios */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {quickScenarios.map((scenario) => (
+                  <button
+                    key={scenario.label}
+                    onClick={() => setInputValue(scenario.label)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 hover:bg-muted/60 border border-border/30 text-xs font-medium text-foreground transition-colors"
+                  >
+                    {iconMap[scenario.icon]}
+                    {scenario.label}
+                  </button>
+                ))}
               </div>
             </div>
-          </section>
 
-          {/* Quick scenarios */}
-          <section className="px-4 py-2">
-            <p className="mb-2.5 text-[12px] font-medium text-neutral-500">高频场景</p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {quickScenarios.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => {
-                    const prompts: Record<string, string> = {
-                      '通勤上班': '今天上班穿，需要正式但不刻板',
-                      '约会聚餐': '晚上约会，希望看起来有气质',
-                      '周末出游': '周末出去逛街，舒适休闲为主',
-                      '商务会议': '下午有商务会议，需要正式一些',
-                    };
-                    setInputValue(prompts[s.label] || s.label);
-                  }}
-                  className="flex items-center gap-2.5 rounded-lg bg-white p-3.5 ring-1 ring-neutral-200/60 transition-wardrobe hover:ring-brand-600/40 hover:bg-brand-50/30 active:scale-[0.98]"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-                    <span className="text-[14px]">{s.icon}</span>
-                  </div>
-                  <span className="text-[13px] font-medium text-neutral-900">{s.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* History */}
-          <section className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[12px] font-medium text-neutral-500">历史方案</p>
-              <button className="text-[12px] text-brand-600 transition-wardrobe hover:text-brand-700">查看全部</button>
-            </div>
-            <div className="mt-2 space-y-1.5">
-              {[
-                { title: '商务休闲通勤', date: '7/22' },
-                { title: '周末休闲出行', date: '7/20' },
-                { title: '优雅约会装扮', date: '7/18' },
-              ].map((h) => (
-                <button
-                  key={h.title}
-                  className="flex w-full items-center justify-between rounded-lg bg-white px-3.5 py-3 ring-1 ring-neutral-200/50 transition-wardrobe hover:ring-neutral-300 active:scale-[0.99]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-50">
-                      <Sparkles size={12} className="text-neutral-400" />
-                    </div>
-                    <div className="text-left">
-                      <span className="text-[13px] text-neutral-900">{h.title}</span>
-                      <p className="text-[11px] text-neutral-500">{h.date}</p>
-                    </div>
-                  </div>
-                  <ChevronLeft size={14} className="rotate-180 text-neutral-300" />
-                </button>
-              ))}
-            </div>
-          </section>
-        </>
-      )}
-
-      {pageState === 'loading' && (
-        <LoadingState />
-      )}
-
-      {pageState === 'result' && (
-        <>
-          {/* Result header */}
-          <header className="sticky top-0 z-40 bg-white/98 px-4 py-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setPageState('input')}
-                className="rounded-full p-1.5 transition-wardrobe hover:bg-neutral-100"
-              >
-                <ChevronLeft size={20} className="text-neutral-900" />
+            {/* Reference image entry */}
+            <div className="px-4 pt-6">
+              <button className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
+                <div className="h-10 w-10 rounded-full bg-ai-50 flex items-center justify-center">
+                  <ImageIcon className="h-5 w-5 text-ai-600" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-sm font-medium text-foreground">用参考图搭配</p>
+                  <p className="text-xs text-muted-foreground">上传一张图片，AI 用你的衣物模仿风格</p>
+                </div>
               </button>
-              <div className="text-center">
-                <p className="text-[14px] font-medium text-neutral-900">{generatedOutfit.name}</p>
-                <p className="text-[11px] text-neutral-500">
-                  上海 · {generatedOutfit.weather} · {generatedOutfit.occasion}
+            </div>
+
+            {/* History entry */}
+            <div className="px-4 pt-4">
+              <button
+                onClick={() => setShowHistory(true)}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <History className="h-3.5 w-3.5" />
+                查看历史方案
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Loading State */}
+        {pageState === 'loading' && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <div className="w-full max-w-xs space-y-6 text-center">
+              {/* Progress indicator */}
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+              </div>
+
+              {/* Progress bar */}
+              <Progress value={progress} className="h-1.5" />
+
+              {/* Stage text */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  {loadingStages[currentStage]?.label}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  请稍候，正在为你寻找最佳搭配
                 </p>
               </div>
-              <div className="relative">
-                <button
-                  onClick={() => setShowMoreMenu(!showMoreMenu)}
-                  className="rounded-full p-1.5 transition-wardrobe hover:bg-neutral-100"
-                >
-                  <MoreHorizontal size={18} className="text-neutral-600" />
-                </button>
-                {showMoreMenu && (
-                  <div className="absolute right-0 top-10 w-36 overflow-hidden rounded-lg bg-white shadow-[0_8px_24px_rgba(24,28,26,0.12)] animate-scale-in z-50">
-                    <button className="flex w-full items-center gap-2 px-3 py-2.5 text-[13px] text-neutral-900 hover:bg-neutral-50 transition-wardrobe">
-                      <Save size={14} className="text-neutral-500" /> 保存穿搭
-                    </button>
-                    <button className="flex w-full items-center gap-2 px-3 py-2.5 text-[13px] text-neutral-900 hover:bg-neutral-50 transition-wardrobe">
-                      <Copy size={14} className="text-neutral-500" /> 复制方案
-                    </button>
-                    <button className="flex w-full items-center gap-2 px-3 py-2.5 text-[13px] text-neutral-900 hover:bg-neutral-50 transition-wardrobe">
-                      <Share2 size={14} className="text-neutral-500" /> 分享图片
-                    </button>
-                  </div>
-                )}
+
+              {/* Stage dots */}
+              <div className="flex items-center justify-center gap-2">
+                {loadingStages.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      index <= currentStage
+                        ? 'w-4 bg-primary'
+                        : 'w-1.5 bg-muted-foreground/20'
+                    }`}
+                  />
+                ))}
               </div>
             </div>
-          </header>
+          </div>
+        )}
 
-          {/* Outfit result area */}
-          <section className="px-4 py-4">
-            <div className="outfit-stage rounded-xl p-5">
-              <div className="flex items-end justify-center gap-2.5 py-3 stagger-children">
-                {generatedOutfit.items.map((item, idx) => {
-                  const isSelected = selectedItemId === item.id;
-                  const isLocked = lockedItems.has(item.id);
-                  const isCenter = idx === 0;
-                  return (
+        {/* Result State */}
+        {pageState === 'result' && (
+          <>
+            {/* Header */}
+            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/50">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{outfit.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      上海 · 22-28°C · {outfit.occasion}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory(true)}>
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </header>
+
+            {/* Outfit result area - 55-62% of height */}
+            <div className="px-4 pt-4">
+              <div className="rounded-xl bg-gradient-to-b from-muted/60 to-muted/30 p-4 min-h-[320px]">
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  {outfit.items.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => {
-                        setSelectedItemId(isSelected ? null : item.id);
-                        if (!isSelected && candidates.length > 0) handleReplace(item.id);
-                      }}
-                      className="group relative"
+                      onClick={() => handleItemSelect(item)}
+                      className={`group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border-2 overflow-hidden transition-all duration-200 hover:shadow-md ${
+                        selectedItem?.id === item.id
+                          ? 'border-primary shadow-md'
+                          : 'border-border/30 hover:border-primary/30'
+                      }`}
                     >
-                      <div
-                        className={cn(
-                          'relative overflow-hidden rounded-lg transition-wardrobe',
-                          isSelected
-                            ? 'animate-ring-appear ring-2 ring-brand-600'
-                            : isLocked
-                            ? 'ring-2 ring-brand-600/40'
-                            : 'ring-1 ring-neutral-200/40 hover:ring-brand-600/50'
-                        )}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className={cn(
-                            'object-contain bg-neutral-50 p-1.5 transition-wardrobe',
-                            isCenter ? 'h-28 w-24' : 'h-24 w-20'
-                          )}
-                        />
-                        {isLocked && (
-                          <div className="absolute right-1 top-1 rounded-full bg-brand-600 p-0.5 shadow-sm">
-                            <Lock size={9} className="text-white" />
-                          </div>
-                        )}
-                        {isSelected && (
-                          <div className="absolute inset-x-0 bottom-0 bg-brand-600/90 py-0.5 text-center">
-                            <span className="text-[9px] font-medium text-white">点击替换</span>
-                          </div>
-                        )}
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Lock indicator */}
+                      {lockedItems.has(item.id) && (
+                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                          <Lock className="h-3 w-3 text-primary-foreground" />
+                        </div>
+                      )}
+                      {/* Item label */}
+                      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
+                        <p className="text-[10px] text-white truncate">{item.subCategory}</p>
                       </div>
-                      <p className="mt-1.5 max-w-[5.5rem] truncate text-center text-[11px] text-neutral-600">
-                        {item.name}
-                      </p>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
+            </div>
 
-              {/* Explanation */}
-              <div className="mt-3 text-center">
-                <p className="text-[13px] text-neutral-600">{generatedOutfit.explanation}</p>
-                <button
-                  onClick={() => setShowWhy(!showWhy)}
-                  className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/60 px-2.5 py-1 text-[11px] text-ai-600 transition-wardrobe hover:bg-white/90"
+            {/* Explanation */}
+            <div className="px-4 pt-4">
+              <p className="text-sm text-foreground leading-relaxed">{outfit.explanation}</p>
+              <button
+                onClick={() => setShowWhy(true)}
+                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Sparkles className="h-3 w-3 text-ai-400" />
+                查看推荐理由
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="px-4 pt-5 flex gap-3">
+              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm">
+                <Check className="h-4 w-4 mr-2" />
+                今天穿
+              </Button>
+              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm" onClick={handleBack}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                换一套
+              </Button>
+            </div>
+
+            {/* Selected item actions */}
+            {selectedItem && (
+              <div className="px-4 pt-3 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-9 rounded-lg text-xs"
+                  onClick={() => {
+                    setShowReplacement(true);
+                  }}
                 >
-                  <Sparkles size={10} />
-                  为什么这样搭
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Why explanation */}
-          {showWhy && (
-            <section className="px-4 pb-2 animate-fade-in-up">
-              <div className="rounded-lg bg-ai-50 p-3.5 ring-1 ring-ai-100/50">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="flex items-center gap-1.5 text-[12px] font-medium text-ai-600">
-                    <Sparkles size={11} />
-                    搭配理由
-                  </span>
-                  <button onClick={() => setShowWhy(false)} className="rounded-full p-0.5 hover:bg-ai-100/50 transition-wardrobe">
-                    <X size={14} className="text-ai-600" />
-                  </button>
-                </div>
-                <ul className="space-y-2">
-                  {generatedOutfit.reasons.map((reason, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-[12px] leading-relaxed text-neutral-600">
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ai-400" />
-                      {reason}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          )}
-
-          {/* Undo toast */}
-          {undoVisible && (
-            <div className="px-4 pb-2 animate-fade-in-up">
-              <div className="flex items-center justify-between rounded-lg bg-neutral-900 px-3 py-2.5">
-                <span className="text-[12px] text-white">已替换单品</span>
-                <button
-                  onClick={() => setUndoVisible(false)}
-                  className="text-[12px] font-medium text-brand-500 transition-wardrobe hover:text-brand-100"
+                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
+                  替换
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-9 rounded-lg text-xs"
+                  onClick={() => toggleLock(selectedItem.id)}
                 >
-                  撤销
-                </button>
+                  {lockedItems.has(selectedItem.id) ? (
+                    <>
+                      <Unlock className="h-3.5 w-3.5 mr-1.5" />
+                      解锁
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3.5 w-3.5 mr-1.5" />
+                      锁定
+                    </>
+                  )}
+                </Button>
               </div>
-            </div>
-          )}
-
-          {/* Replacement candidates drawer */}
-          {selectedItemId && candidates.length > 0 && (
-            <section className="px-4 pb-2 animate-fade-in-up">
-              <div className="rounded-xl bg-white p-3.5 ring-1 ring-neutral-200/60">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[13px] font-medium text-neutral-900">替换候选</span>
-                  <button onClick={() => setSelectedItemId(null)} className="rounded-full p-0.5 hover:bg-neutral-100 transition-wardrobe">
-                    <X size={14} className="text-neutral-500" />
-                  </button>
-                </div>
-                {/* Quick directions */}
-                <div className="mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-                  {['更舒适', '更正式', '换个颜色', '更保暖'].map((dir) => (
-                    <button
-                      key={dir}
-                      className="shrink-0 rounded-full bg-neutral-50 px-2.5 py-1 text-[11px] text-neutral-600 transition-wardrobe hover:bg-neutral-100 active:scale-[0.96]"
-                    >
-                      {dir}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2.5">
-                  {candidates.map((c) => (
-                    <button
-                      key={c.id}
-                      className="flex flex-col items-center rounded-lg bg-neutral-50 p-2.5 ring-1 ring-neutral-200/50 transition-wardrobe hover:ring-brand-600/50 active:scale-[0.96]"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.imageUrl} alt={c.name} className="h-14 w-12 object-contain" />
-                      <span className="mt-1.5 max-w-[4.5rem] truncate text-[10px] text-neutral-600">{c.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Action buttons */}
-          <section className="px-4 py-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleWorn}
-                className={cn(
-                  'flex h-12 flex-1 items-center justify-center gap-2 rounded-lg text-[15px] font-medium transition-wardrobe active:scale-[0.98]',
-                  worn
-                    ? 'bg-success-bg text-success-fg'
-                    : 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20'
-                )}
-              >
-                {worn ? <><Check size={18} /> 已记录</> : <><Check size={18} /> 今天穿</>}
-              </button>
-              <button
-                onClick={() => { setPageState('loading'); setTimeout(() => setPageState('result'), 2500); }}
-                className="flex h-12 items-center gap-1.5 rounded-lg bg-white px-4 text-[13px] font-medium text-neutral-900 ring-1 ring-neutral-200 transition-wardrobe hover:bg-neutral-50 active:scale-[0.98]"
-              >
-                <RefreshCw size={14} />
-                再生成
-              </button>
-            </div>
-            <div className="mt-2.5 flex items-center justify-center gap-5">
-              <button
-                onClick={() => selectedItemId && toggleLock(selectedItemId)}
-                className={cn(
-                  'flex items-center gap-1 text-[12px] transition-wardrobe',
-                  selectedItemId && lockedItems.has(selectedItemId)
-                    ? 'text-brand-600 font-medium'
-                    : 'text-neutral-500 hover:text-brand-600'
-                )}
-              >
-                <Lock size={13} />
-                {selectedItemId ? (lockedItems.has(selectedItemId) ? '已锁定' : '锁定单品') : '点击单品后锁定'}
-              </button>
-              <button className="flex items-center gap-1 text-[12px] text-neutral-500 transition-wardrobe hover:text-brand-600">
-                <Save size={13} />
-                保存穿搭
-              </button>
-            </div>
-          </section>
-        </>
-      )}
-    </div>
-  );
-}
-
-function LoadingState() {
-  const [stage, setStage] = useState(0);
-  const [progress, setProgress] = useState(0);
-
-  const stages = [
-    '正在理解场合需求...',
-    '正在从 86 件衣物中筛选...',
-    '正在检查天气适配度...',
-    '正在生成搭配方案...',
-  ];
-
-  useEffect(() => {
-    const stageTimer = setInterval(() => {
-      setStage((prev) => {
-        if (prev >= stages.length - 1) {
-          clearInterval(stageTimer);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 750);
-
-    const progressTimer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressTimer);
-          return 100;
-        }
-        return prev + 2;
-      });
-    }, 60);
-
-    return () => {
-      clearInterval(stageTimer);
-      clearInterval(progressTimer);
-    };
-  }, []);
-
-  return (
-    <div className="flex min-h-[75vh] flex-col items-center justify-center px-8">
-      {/* Animated indicator */}
-      <div className="relative">
-        <div className="h-16 w-16 rounded-full bg-ai-50 flex items-center justify-center">
-          <div className="h-10 w-10 rounded-full bg-ai-100/60 flex items-center justify-center animate-dot-pulse">
-            <Sparkles size={20} className="text-ai-600" />
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8 text-center">
-        <p className="text-[16px] font-semibold text-neutral-900">正在为你搭配</p>
-        <p className="mt-2 text-[13px] text-neutral-500 transition-all duration-300">{stages[stage]}</p>
-      </div>
-
-      {/* Progress bar */}
-      <div className="mt-8 w-48">
-        <div className="h-0.5 w-full overflow-hidden rounded-full bg-neutral-100">
-          <div
-            className="h-full rounded-full bg-brand-600 transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Stage dots */}
-      <div className="mt-6 flex items-center gap-3">
-        {stages.map((_, idx) => (
-          <div
-            key={idx}
-            className={cn(
-              'h-1.5 w-1.5 rounded-full transition-all duration-300',
-              idx <= stage ? 'bg-brand-600 scale-100' : 'bg-neutral-200 scale-75'
             )}
-          />
-        ))}
+
+            {/* Continue input */}
+            <div className="px-4 pt-5">
+              <div className="relative">
+                <Input
+                  placeholder="继续调整，如：鞋子换成平底"
+                  className="pr-20 h-10 bg-muted/30 border-border/50 rounded-lg text-sm"
+                />
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <div className="h-1 w-1 rounded-full bg-ai-400" />
+                  <Button size="icon" className="h-7 w-7 rounded-md bg-primary">
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Replacement Drawer */}
+        <Sheet open={showReplacement} onOpenChange={setShowReplacement}>
+          <SheetContent className="sm:max-w-lg">
+            <SheetHeader>
+              <SheetTitle>替换 {selectedItem?.subCategory}</SheetTitle>
+              <SheetDescription>从衣橱中选择一个替代单品</SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="py-4 space-y-4">
+                {/* Quick directions */}
+                <div className="flex flex-wrap gap-2">
+                  {['更正式', '更休闲', '换个颜色', '更保暖'].map((dir) => (
+                    <Button key={dir} variant="outline" size="sm" className="rounded-full text-xs">
+                      {dir}
+                    </Button>
+                  ))}
+                </div>
+                {/* Candidates from wardrobe */}
+                <div className="grid grid-cols-3 gap-3">
+                  {wardrobeItems
+                    .filter((item) => item.category === selectedItem?.category && item.id !== selectedItem?.id)
+                    .map((item) => (
+                      <button
+                        key={item.id}
+                        className="group relative aspect-[3/4] rounded-lg bg-muted/30 border border-border/30 overflow-hidden hover:border-primary/40 transition-colors"
+                      >
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
+                          <p className="text-[9px] text-white truncate">{item.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </ScrollArea>
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
+              <Button className="w-full h-11 bg-primary hover:bg-primary/90">
+                确认替换
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* History Sheet */}
+        <Sheet open={showHistory} onOpenChange={setShowHistory}>
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>历史方案</SheetTitle>
+              <SheetDescription>你过去的搭配记录</SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-160px)]">
+              <div className="py-4 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
+                    <div className="h-12 w-12 rounded-md bg-muted/50 flex items-center justify-center">
+                      <Shirt className="h-5 w-5 text-muted-foreground/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">搭配方案 #{i}</p>
+                      <p className="text-xs text-muted-foreground">2026-07-{20 - i} · 通勤</p>
+                    </div>
+                    <Clock className="h-4 w-4 text-muted-foreground/50" />
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+
+        {/* Why Sheet */}
+        <Sheet open={showWhy} onOpenChange={setShowWhy}>
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>推荐理由</SheetTitle>
+              <SheetDescription>AI 为什么推荐这套搭配</SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-3">
+              <div className="p-3 rounded-lg bg-muted/40">
+                <p className="text-sm font-medium text-foreground mb-1">场合匹配</p>
+                <p className="text-xs text-muted-foreground">商务休闲风格，适合日常通勤和办公环境</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/40">
+                <p className="text-sm font-medium text-foreground mb-1">天气适配</p>
+                <p className="text-xs text-muted-foreground">22-28°C 温度范围，透气舒适不闷热</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/40">
+                <p className="text-sm font-medium text-foreground mb-1">色彩协调</p>
+                <p className="text-xs text-muted-foreground">经典配色方案，简洁大方不出错</p>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

@@ -1,345 +1,384 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  CloudSun,
-  Send,
-  RefreshCw,
-  Check,
+  Cloud,
+  ChevronLeft,
   ChevronRight,
+  Send,
+  Sparkles,
   Shirt,
   Image as ImageIcon,
-  Sparkles,
+  Check,
+  RefreshCw,
+  Info,
+  ThermometerSun,
   Lock,
-  ChevronDown,
-  ThumbsUp,
-  Thermometer,
+  ArrowRightLeft,
   X,
+  Briefcase,
+  Wine,
+  Sun,
+  ClipboardList,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { wardrobeItems, quickScenarios } from '@/lib/mock-data';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { todayOutfit, todayAlternatives, weatherContext, quickScenarios } from '@/lib/mock-data';
+import type { WardrobeItem, Outfit } from '@/lib/mock-data';
 
-const todayOutfit = {
-  items: [wardrobeItems[2], wardrobeItems[0], wardrobeItems[1], wardrobeItems[5], wardrobeItems[11]],
-  name: '商务休闲通勤',
-  explanation: '黑色西装搭配白T和牛仔裤，正式但不刻板，适合今日多云天气',
-  weather: '18-24°C 多云',
-  occasion: '通勤',
-  reasons: [
-    '黑色西装提升正式度，适合日常办公',
-    '白T+牛仔裤平衡休闲感，不会过于严肃',
-    '温度18-24°C，西装厚度适中',
-  ],
+const iconMap: Record<string, React.ReactNode> = {
+  Briefcase: <Briefcase className="h-4 w-4" />,
+  Wine: <Wine className="h-4 w-4" />,
+  Sun: <Sun className="h-4 w-4" />,
+  ClipboardList: <ClipboardList className="h-4 w-4" />,
 };
 
-const alternativeOutfits = [
-  todayOutfit,
-  {
-    items: [wardrobeItems[10], wardrobeItems[7], wardrobeItems[4], wardrobeItems[6], wardrobeItems[9]],
-    name: '轻松层次感',
-    explanation: '藏青风衣内搭条纹衬衫，搭配卡其阔腿裤，春秋经典组合',
-    weather: '18-24°C 多云',
-    occasion: '通勤',
-    reasons: [
-      '藏青风衣挡风保暖，适合多云天气',
-      '条纹衬衫增加层次感',
-      '阔腿裤舒适且修饰腿型',
-    ],
-  },
-  {
-    items: [wardrobeItems[3], wardrobeItems[1], wardrobeItems[6], wardrobeItems[5]],
-    name: '温柔日常',
-    explanation: '米色针织衫搭配牛仔裤和白色运动鞋，轻松舒适的日常穿搭',
-    weather: '18-24°C 多云',
-    occasion: '日常',
-    reasons: [
-      '米色针织衫柔软舒适，适合日常',
-      '经典蓝牛仔裤百搭不过时',
-      '白色运动鞋轻松休闲',
-    ],
-  },
-];
-
 export default function HomePage() {
-  const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
-  const [inputValue, setInputValue] = useState('');
-  const [worn, setWorn] = useState(false);
-  const [lockedItems, setLockedItems] = useState<Set<string>>(new Set());
+  const [currentAltIndex, setCurrentAltIndex] = useState(0);
   const [showWhy, setShowWhy] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
+  const [showReplacement, setShowReplacement] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  const currentOutfit = todayAlternatives[currentAltIndex];
 
-  const currentOutfit = alternativeOutfits[currentOutfitIndex];
-
-  const handleWorn = () => {
-    setWorn(true);
-    setTimeout(() => {
-      setShowFeedback(true);
-    }, 600);
+  const handlePrevAlt = () => {
+    setCurrentAltIndex((prev) => (prev > 0 ? prev - 1 : todayAlternatives.length - 1));
   };
 
-  const handleNextOutfit = () => {
-    setCurrentOutfitIndex((prev) => (prev + 1) % alternativeOutfits.length);
+  const handleNextAlt = () => {
+    setCurrentAltIndex((prev) => (prev < todayAlternatives.length - 1 ? prev + 1 : 0));
   };
 
-  const toggleLock = (itemId: string) => {
-    setLockedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
+  const handleItemSelect = (item: WardrobeItem) => {
+    setSelectedItem(item);
+    setShowReplacement(true);
   };
 
-  const today = new Date();
-  const dateStr = `${today.getMonth() + 1}月${today.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][today.getDay()]}`;
-  const hour = today.getHours();
-  const greeting = hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
+  const handleScenarioClick = (label: string) => {
+    setInputValue(label);
+    setIsGenerating(true);
+    setTimeout(() => setIsGenerating(false), 1500);
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-25 pb-4">
-      {/* Top bar */}
-      <header className="px-4 pb-1 pt-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[15px] font-semibold tracking-tight text-neutral-900">
-              {greeting}，小明
-            </p>
-            <p className="mt-0.5 text-[12px] text-neutral-500">{dateStr}</p>
+    <TooltipProvider>
+      <div className="min-h-screen bg-background pb-24">
+        {/* Header with weather context */}
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                下午好，{currentOutfit.items.length > 0 ? '小明' : ''}
+              </p>
+              <p className="text-lg font-semibold text-foreground tracking-tight">
+                今天穿什么？
+              </p>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted transition-colors">
+                  <ThermometerSun className="h-3.5 w-3.5 text-accent-foreground" />
+                  <span className="text-xs font-medium text-foreground">{weatherContext.tempRange}</span>
+                  <span className="text-xs text-muted-foreground">{weatherContext.condition}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{weatherContext.city} · 湿度 {weatherContext.humidity}% · UV {weatherContext.uvIndex}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
-          <button className="flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[12px] text-neutral-600 ring-1 ring-neutral-200/60 transition-wardrobe hover:bg-white">
-            <CloudSun size={14} className="text-ai-400" />
-            <span className="tabular-nums">上海 24°C</span>
-          </button>
-        </div>
-      </header>
+        </header>
 
-      {/* Quick input */}
-      <section className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <div className="absolute left-3 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-ai-400" />
-            <input
-              type="text"
+        {/* Quick need input */}
+        <section className="px-4 pt-4 pb-2">
+          <div className="relative">
+            <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="今天有什么安排？"
-              className="h-11 w-full rounded-lg bg-white pl-6 pr-11 text-[14px] text-neutral-900 ring-1 ring-neutral-200/80 placeholder:text-neutral-500 focus:ring-1 focus:ring-brand-600 focus:outline-none transition-wardrobe"
+              className="pr-12 h-11 bg-muted/40 border-border/50 rounded-lg text-sm placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary/30"
             />
-            <button className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-brand-600 p-2 text-white transition-wardrobe hover:bg-brand-700 active:scale-95">
-              <Send size={14} />
-            </button>
-          </div>
-        </div>
-        <div className="mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          {quickScenarios.map((s) => (
-            <button
-              key={s.label}
-              className="flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[12px] text-neutral-600 ring-1 ring-neutral-200/60 transition-wardrobe hover:ring-brand-600 hover:text-brand-700 active:scale-[0.97]"
+            <Button
+              size="icon"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-primary hover:bg-primary/90"
+              onClick={() => inputValue && handleScenarioClick(inputValue)}
             >
-              <span className="text-[11px]">{s.icon}</span>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </section>
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Quick scenario chips */}
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+            {quickScenarios.map((scenario) => (
+              <button
+                key={scenario.label}
+                onClick={() => handleScenarioClick(scenario.label)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted border border-border/40 text-xs font-medium text-foreground transition-all hover:border-primary/20 whitespace-nowrap"
+              >
+                {iconMap[scenario.icon]}
+                {scenario.label}
+              </button>
+            ))}
+          </div>
+        </section>
 
-      {/* Today's outfit - main visual */}
-      <section className="px-4 py-1">
-        <div className="outfit-stage relative overflow-hidden rounded-xl p-5">
-          {/* Outfit items layout */}
-          <div className="flex items-end justify-center gap-2.5 py-3 stagger-children">
-            {currentOutfit.items.map((item, idx) => {
-              const isLocked = lockedItems.has(item.id);
-              const isCenter = idx === 0;
-              return (
-                <div key={item.id} className="group relative">
+        {/* Today's main outfit - the hero section */}
+        <section className="px-4 pt-4">
+          {/* Outfit stage area */}
+          <div className="relative rounded-xl bg-gradient-to-b from-muted/60 to-muted/30 overflow-hidden">
+            {/* Outfit items display */}
+            <div className="px-4 pt-6 pb-4">
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {currentOutfit.items.slice(0, 4).map((item, index) => (
                   <button
-                    onClick={() => toggleLock(item.id)}
-                    className={cn(
-                      'relative overflow-hidden rounded-lg transition-wardrobe',
-                      isLocked
-                        ? 'animate-ring-appear ring-2 ring-brand-600'
-                        : 'ring-1 ring-neutral-200/40 hover:ring-brand-600/50'
-                    )}
+                    key={item.id}
+                    onClick={() => handleItemSelect(item)}
+                    className="group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border border-border/30 overflow-hidden transition-all duration-200 hover:scale-[1.03] hover:shadow-md hover:border-primary/30 active:scale-[0.98]"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className={cn(
-                        'object-contain bg-neutral-50 p-1.5 transition-wardrobe',
-                        isCenter ? 'h-28 w-24' : 'h-24 w-20'
-                      )}
+                      className="w-full h-full object-cover"
                     />
-                    {isLocked && (
-                      <div className="absolute right-1 top-1 rounded-full bg-brand-600 p-0.5 shadow-sm">
-                        <Lock size={9} className="text-white" />
-                      </div>
-                    )}
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
+                    {/* Item label */}
+                    <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
+                      <p className="text-[10px] text-white truncate">{item.subCategory}</p>
+                    </div>
                   </button>
-                  <p className="mt-1.5 max-w-[5.5rem] truncate text-center text-[11px] text-neutral-600">
-                    {item.name}
+                ))}
+              </div>
+            </div>
+
+            {/* Outfit info */}
+            <div className="px-4 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">{currentOutfit.name}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {currentOutfit.explanation?.slice(0, 30)}...
                   </p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {currentOutfit.occasion}
+                  </Badge>
+                </div>
+              </div>
 
-          {/* Outfit info */}
-          <div className="mt-3 text-center">
-            <h3 className="text-[15px] font-semibold text-neutral-900">
-              {currentOutfit.name}
-            </h3>
-            <p className="mx-auto mt-1.5 max-w-[280px] text-[12px] leading-relaxed text-neutral-600">
-              {currentOutfit.explanation}
-            </p>
-            <button
-              onClick={() => setShowWhy(!showWhy)}
-              className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/60 px-2.5 py-1 text-[11px] text-ai-600 transition-wardrobe hover:bg-white/90"
-            >
-              <Sparkles size={10} />
-              为什么这样搭
-              <ChevronDown size={10} className={cn('transition-wardrobe', showWhy && 'rotate-180')} />
-            </button>
-          </div>
-
-          {/* Why explanation */}
-          {showWhy && (
-            <div className="mt-3 rounded-lg bg-white/70 p-3 animate-fade-in-up">
-              <ul className="space-y-1.5">
-                {currentOutfit.reasons.map((reason, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-[12px] text-neutral-600">
-                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-ai-400" />
-                    {reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Alternative dots */}
-          <div className="mt-4 flex items-center justify-center gap-1.5">
-            {alternativeOutfits.map((_, idx) => (
+              {/* Why button */}
               <button
-                key={idx}
-                onClick={() => setCurrentOutfitIndex(idx)}
-                className={cn(
-                  'rounded-full transition-wardrobe',
-                  idx === currentOutfitIndex
-                    ? 'h-1.5 w-5 bg-brand-600'
-                    : 'h-1.5 w-1.5 bg-neutral-300 hover:bg-neutral-400'
-                )}
+                onClick={() => setShowWhy(true)}
+                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Info className="h-3 w-3" />
+                为什么推荐这套？
+              </button>
+            </div>
+
+            {/* Navigation arrows */}
+            {todayAlternatives.length > 1 && (
+              <>
+                <button
+                  onClick={handlePrevAlt}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                >
+                  <ChevronLeft className="h-4 w-4 text-foreground" />
+                </button>
+                <button
+                  onClick={handleNextAlt}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                >
+                  <ChevronRight className="h-4 w-4 text-foreground" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Alternative indicators */}
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            {todayAlternatives.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentAltIndex(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentAltIndex
+                    ? 'w-6 bg-primary'
+                    : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
+                }`}
               />
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Action buttons */}
-      <section className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleWorn}
-            disabled={worn}
-            className={cn(
-              'flex h-12 flex-1 items-center justify-center gap-2 rounded-lg text-[15px] font-medium transition-wardrobe active:scale-[0.98]',
-              worn
-                ? 'bg-success-bg text-success-fg'
-                : 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20'
-            )}
+        {/* Decision actions */}
+        <section className="px-4 pt-5 flex gap-3">
+          <Button
+            className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm shadow-sm"
           >
-            {worn ? (
-              <>
-                <Check size={18} />
-                已记录
-              </>
-            ) : (
-              <>
-                <Check size={18} />
-                今天穿
-              </>
-            )}
-          </button>
-          <button
-            onClick={handleNextOutfit}
-            className="flex h-12 items-center gap-1.5 rounded-lg bg-white px-5 text-[14px] font-medium text-neutral-900 ring-1 ring-neutral-200 transition-wardrobe hover:bg-neutral-50 active:scale-[0.98]"
+            <Check className="h-4 w-4 mr-2" />
+            今天穿这套
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 h-12 rounded-lg border-border text-foreground font-medium text-sm hover:bg-muted"
+            onClick={handleNextAlt}
           >
-            <RefreshCw size={15} />
+            <RefreshCw className="h-4 w-4 mr-2" />
             换一套
-          </button>
-        </div>
-      </section>
+          </Button>
+        </section>
 
-      {/* Secondary entries */}
-      <section className="px-4 py-1">
-        <div className="flex items-center gap-3">
-          <button className="flex flex-1 items-center gap-3 rounded-lg bg-white p-3.5 ring-1 ring-neutral-200/60 transition-wardrobe hover:ring-neutral-300 active:scale-[0.98]">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50">
-              <Shirt size={18} className="text-brand-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-[13px] font-medium text-neutral-900">添加衣物</p>
-              <p className="text-[11px] text-neutral-500">拍照或从相册导入</p>
-            </div>
-            <ChevronRight size={14} className="ml-auto text-neutral-300" />
+        {/* Secondary entries */}
+        <section className="px-4 pt-6 flex gap-3">
+          <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/30 transition-colors">
+            <Shirt className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">添加衣物</span>
           </button>
-          <button className="flex flex-1 items-center gap-3 rounded-lg bg-white p-3.5 ring-1 ring-neutral-200/60 transition-wardrobe hover:ring-neutral-300 active:scale-[0.98]">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-ai-50">
-              <ImageIcon size={18} className="text-ai-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-[13px] font-medium text-neutral-900">参考图搭配</p>
-              <p className="text-[11px] text-neutral-500">用你的衣物复刻</p>
-            </div>
-            <ChevronRight size={14} className="ml-auto text-neutral-300" />
+          <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/30 transition-colors">
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">参考图搭配</span>
           </button>
-        </div>
-      </section>
+        </section>
 
-      {/* Feedback dialog */}
-      {showFeedback && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-fade" onClick={() => setShowFeedback(false)}>
-          <div
-            className="w-full max-w-lg animate-slide-up rounded-t-xl bg-white p-5 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-semibold text-neutral-900">整体感觉如何？</h3>
-              <button onClick={() => setShowFeedback(false)} className="rounded-full p-1 hover:bg-neutral-100">
-                <X size={18} className="text-neutral-500" />
-              </button>
+        {/* AI Insight */}
+        <section className="px-4 pt-6">
+          <Card className="border-border/50 bg-gradient-to-br from-ai-50/50 to-background">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-full bg-ai-100 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-4 w-4 text-ai-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-ai-600">AI 洞察</p>
+                  <p className="text-sm text-foreground mt-1 leading-relaxed">
+                    你本周穿了 12 件不同的单品，衣橱利用率达到 64%。有 5 件单品超过 2 周没穿，要不要给它们一个亮相的机会？
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Why Sheet */}
+        <Sheet open={showWhy} onOpenChange={setShowWhy}>
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>为什么推荐这套？</SheetTitle>
+              <SheetDescription>基于你的衣橱、天气和偏好生成</SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ThermometerSun className="h-4 w-4 text-accent-foreground" />
+                  <span className="text-sm font-medium">天气适配</span>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  22-28°C 多云，这套穿搭透气舒适，适合今天的温度
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">场合适配</span>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  商务休闲风格，适合日常通勤和办公环境
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Shirt className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">色彩协调</span>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  白色 + 深蓝 + 棕色，经典配色方案，简洁大方
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-ai-600" />
+                  <span className="text-sm font-medium">新鲜度</span>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  有 2 件单品超过一周没穿，帮你唤醒沉睡衣物
+                </p>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: '刚好', icon: ThumbsUp, color: 'brand' },
-                { label: '太热', icon: Thermometer, color: 'warning' },
-                { label: '太冷', icon: Thermometer, color: 'info' },
-              ].map((fb) => (
-                <button
-                  key={fb.label}
-                  onClick={() => setShowFeedback(false)}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 rounded-lg py-3 transition-wardrobe active:scale-95',
-                    fb.color === 'brand' ? 'bg-brand-50 text-brand-700 hover:bg-brand-100' : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
-                  )}
-                >
-                  <fb.icon size={20} />
-                  <span className="text-[12px] font-medium">{fb.label}</span>
-                </button>
-              ))}
+          </SheetContent>
+        </Sheet>
+
+        {/* Replacement Drawer */}
+        <Sheet open={showReplacement} onOpenChange={setShowReplacement}>
+          <SheetContent className="sm:max-w-lg">
+            <SheetHeader>
+              <SheetTitle>替换单品</SheetTitle>
+              <SheetDescription>
+                为 {selectedItem?.subCategory} 选择一个替代单品
+              </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+              {/* Quick directions */}
+              <div className="flex flex-wrap gap-2">
+                {['更正式', '更休闲', '换个颜色', '更保暖'].map((dir) => (
+                  <Button key={dir} variant="outline" size="sm" className="rounded-full text-xs">
+                    {dir}
+                  </Button>
+                ))}
+              </div>
+              {/* Candidate items */}
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <button
+                    key={i}
+                    className="aspect-[3/4] rounded-lg bg-muted/40 border border-border/30 overflow-hidden hover:border-primary/40 transition-colors"
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Shirt className="h-6 w-6 text-muted-foreground/40" />
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <button
-              onClick={() => setShowFeedback(false)}
-              className="mt-3 w-full text-center text-[12px] text-neutral-500"
-            >
-              跳过
-            </button>
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
+              <Button className="w-full h-11 bg-primary hover:bg-primary/90">
+                确认替换
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Loading overlay */}
+        {isGenerating && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground">正在为你搭配...</p>
+              <p className="text-xs text-muted-foreground">从 86 件衣物中筛选</p>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
