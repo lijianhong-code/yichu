@@ -82,11 +82,11 @@ export default function HomePage() {
     <TooltipProvider>
       <div className="min-h-screen bg-background pb-24">
         {/* Header with weather context */}
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
           <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                下午好，{currentOutfit.items.length > 0 ? '小明' : ''}
+                下午好，小明
               </p>
               <p className="text-lg font-semibold text-foreground tracking-tight">
                 今天穿什么？
@@ -94,7 +94,7 @@ export default function HomePage() {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted transition-colors">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted/80 border border-border/30 transition-all">
                   <ThermometerSun className="h-3.5 w-3.5 text-accent-foreground" />
                   <span className="text-xs font-medium text-foreground">{weatherContext.tempRange}</span>
                   <span className="text-xs text-muted-foreground">{weatherContext.condition}</span>
@@ -114,11 +114,11 @@ export default function HomePage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="今天有什么安排？"
-              className="pr-12 h-11 bg-muted/40 border-border/50 rounded-lg text-sm placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary/30"
+              className="pr-12 h-11 bg-muted/30 border-border/40 rounded-lg text-sm placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:bg-background transition-all"
             />
             <Button
               size="icon"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-primary hover:bg-primary/90"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
               onClick={() => inputValue && handleScenarioClick(inputValue)}
             >
               <Send className="h-4 w-4" />
@@ -127,14 +127,16 @@ export default function HomePage() {
           {/* Quick scenario chips */}
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
             {quickScenarios.map((scenario) => (
-              <button
+              <Button
                 key={scenario.label}
+                variant="outline"
+                size="sm"
                 onClick={() => handleScenarioClick(scenario.label)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted border border-border/40 text-xs font-medium text-foreground transition-all hover:border-primary/20 whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted border-border/40 text-xs font-medium text-foreground transition-all hover:border-primary/20 whitespace-nowrap"
               >
                 {iconMap[scenario.icon]}
                 {scenario.label}
-              </button>
+              </Button>
             ))}
           </div>
         </section>
@@ -142,7 +144,7 @@ export default function HomePage() {
         {/* Today's main outfit - the hero section */}
         <section className="px-4 pt-4">
           {/* Outfit stage area */}
-          <div className="relative rounded-xl bg-gradient-to-b from-muted/60 to-muted/30 overflow-hidden">
+          <div className="relative rounded-xl outfit-stage overflow-hidden noise-texture">
             {/* Outfit items display */}
             <div className="px-4 pt-6 pb-4">
               <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -150,7 +152,7 @@ export default function HomePage() {
                   <button
                     key={item.id}
                     onClick={() => handleItemSelect(item)}
-                    className="group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border border-border/30 overflow-hidden transition-all duration-200 hover:scale-[1.03] hover:shadow-md hover:border-primary/30 active:scale-[0.98]"
+                    className="group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border border-border/20 overflow-hidden transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:border-primary/20 active:scale-[0.98] card-interactive"
                   >
                     <img
                       src={item.imageUrl}
@@ -158,10 +160,10 @@ export default function HomePage() {
                       className="w-full h-full object-cover"
                     />
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {/* Item label */}
-                    <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
-                      <p className="text-[10px] text-white truncate">{item.subCategory}</p>
+                    <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1.5 bg-gradient-to-t from-black/50 via-black/20 to-transparent">
+                      <p className="text-[10px] text-white/90 truncate font-medium">{item.subCategory}</p>
                     </div>
                   </button>
                 ))}
@@ -173,15 +175,13 @@ export default function HomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-foreground">{currentOutfit.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {currentOutfit.explanation?.slice(0, 30)}...
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {currentOutfit.explanation}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-[10px] font-normal">
-                    {currentOutfit.occasion}
-                  </Badge>
-                </div>
+                <Badge variant="secondary" className="text-[10px] font-normal bg-background/60 border-border/30">
+                  {currentOutfit.occasion}
+                </Badge>
               </div>
 
               {/* Why button */}
@@ -199,13 +199,13 @@ export default function HomePage() {
               <>
                 <button
                   onClick={handlePrevAlt}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
                 >
                   <ChevronLeft className="h-4 w-4 text-foreground" />
                 </button>
                 <button
                   onClick={handleNextAlt}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
                 >
                   <ChevronRight className="h-4 w-4 text-foreground" />
                 </button>
@@ -232,14 +232,14 @@ export default function HomePage() {
         {/* Decision actions */}
         <section className="px-4 pt-5 flex gap-3">
           <Button
-            className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm shadow-sm"
+            className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm btn-primary-glow transition-all"
           >
             <Check className="h-4 w-4 mr-2" />
             今天穿这套
           </Button>
           <Button
             variant="outline"
-            className="flex-1 h-12 rounded-lg border-border text-foreground font-medium text-sm hover:bg-muted"
+            className="flex-1 h-12 rounded-lg border-border/60 text-foreground font-medium text-sm hover:bg-muted/60 transition-all"
             onClick={handleNextAlt}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -248,23 +248,29 @@ export default function HomePage() {
         </section>
 
         {/* Secondary entries */}
-        <section className="px-4 pt-6 flex gap-3">
-          <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/30 transition-colors">
-            <Shirt className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">添加衣物</span>
-          </button>
-          <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/30 transition-colors">
-            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">参考图搭配</span>
-          </button>
+        <section className="px-4 pt-5 flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 h-11 rounded-lg bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all"
+          >
+            <Shirt className="h-4 w-4 mr-2 text-muted-foreground" />
+            <span className="text-xs font-medium">添加衣物</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 h-11 rounded-lg bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all"
+          >
+            <ImageIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+            <span className="text-xs font-medium">参考图搭配</span>
+          </Button>
         </section>
 
         {/* AI Insight */}
         <section className="px-4 pt-6">
-          <Card className="border-border/50 bg-gradient-to-br from-ai-50/50 to-background">
+          <Card className="border-border/40 insight-gradient overflow-hidden">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-ai-100 flex items-center justify-center flex-shrink-0">
+                <div className="h-9 w-9 rounded-full bg-ai-100/80 flex items-center justify-center flex-shrink-0 ai-glow">
                   <Sparkles className="h-4 w-4 text-ai-600" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -285,8 +291,8 @@ export default function HomePage() {
               <SheetTitle>为什么推荐这套？</SheetTitle>
               <SheetDescription>基于你的衣橱、天气和偏好生成</SheetDescription>
             </SheetHeader>
-            <div className="py-4 space-y-4">
-              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+            <div className="py-4 space-y-3 stagger-children">
+              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <ThermometerSun className="h-4 w-4 text-accent-foreground" />
                   <span className="text-sm font-medium">天气适配</span>
@@ -295,7 +301,7 @@ export default function HomePage() {
                   22-28°C 多云，这套穿搭透气舒适，适合今天的温度
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">场合适配</span>
@@ -304,7 +310,7 @@ export default function HomePage() {
                   商务休闲风格，适合日常通勤和办公环境
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Shirt className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">色彩协调</span>
@@ -313,7 +319,7 @@ export default function HomePage() {
                   白色 + 深蓝 + 棕色，经典配色方案，简洁大方
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/40 space-y-2">
+              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-ai-600" />
                   <span className="text-sm font-medium">新鲜度</span>
@@ -349,7 +355,7 @@ export default function HomePage() {
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <button
                     key={i}
-                    className="aspect-[3/4] rounded-lg bg-muted/40 border border-border/30 overflow-hidden hover:border-primary/40 transition-colors"
+                    className="aspect-[3/4] rounded-lg bg-muted/30 border border-border/30 overflow-hidden hover:border-primary/30 hover:shadow-md transition-all"
                   >
                     <div className="w-full h-full flex items-center justify-center">
                       <Shirt className="h-6 w-6 text-muted-foreground/40" />
@@ -358,8 +364,8 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
-              <Button className="w-full h-11 bg-primary hover:bg-primary/90">
+            <div className="absolute bottom-0 left-0 right-0 p-4 glass-surface-strong border-t border-border/30">
+              <Button className="w-full h-11 bg-primary hover:bg-primary/90 btn-primary-glow">
                 确认替换
               </Button>
             </div>
@@ -370,7 +376,7 @@ export default function HomePage() {
         {isGenerating && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
             <div className="text-center space-y-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
+              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse ai-glow">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground">正在为你搭配...</p>

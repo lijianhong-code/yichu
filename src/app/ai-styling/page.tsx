@@ -232,7 +232,7 @@ export default function AIStylingPage() {
         {pageState === 'input' && (
           <>
             {/* Header */}
-            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/50">
+            <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
               <div className="px-4 py-3">
                 <h1 className="text-lg font-semibold text-foreground tracking-tight">AI 搭配</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">描述你的需求，AI 从衣橱中为你搭配</p>
@@ -241,7 +241,7 @@ export default function AIStylingPage() {
 
             {/* Context bar */}
             <div className="px-4 pt-4">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/30">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/30">
                 <ThermometerSun className="h-4 w-4 text-accent-foreground" />
                 <span className="text-xs text-foreground">上海</span>
                 <span className="text-xs text-muted-foreground">·</span>
@@ -258,14 +258,14 @@ export default function AIStylingPage() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                  className="min-h-[100px] pr-12 bg-muted/30 border-border/50 rounded-lg text-sm resize-none placeholder:text-muted-foreground/50"
+                  className="min-h-[100px] pr-12 bg-muted/20 border-border/40 rounded-lg text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
                 />
                 <div className="absolute right-2 bottom-2 flex items-center gap-1">
                   {/* AI indicator dot - 4px per PRD */}
                   <div className="h-1 w-1 rounded-full bg-ai-400" />
                   <Button
                     size="icon"
-                    className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90"
+                    className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
                     onClick={handleGenerate}
                     disabled={!inputValue.trim()}
                   >
@@ -277,14 +277,16 @@ export default function AIStylingPage() {
               {/* Quick scenarios */}
               <div className="flex flex-wrap gap-2 mt-3">
                 {quickScenarios.map((scenario) => (
-                  <button
+                  <Button
                     key={scenario.label}
+                    variant="outline"
+                    size="sm"
                     onClick={() => setInputValue(scenario.label)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 hover:bg-muted/60 border border-border/30 text-xs font-medium text-foreground transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted/50 border-border/30 text-xs font-medium text-foreground transition-all hover:border-primary/20"
                   >
                     {iconMap[scenario.icon]}
                     {scenario.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -293,7 +295,7 @@ export default function AIStylingPage() {
             <div className="px-4 pt-5 space-y-3">
               {/* Primary: AI Generate */}
               <Button
-                className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium"
+                className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
                 onClick={handleGenerate}
                 disabled={!inputValue.trim()}
               >
@@ -304,7 +306,7 @@ export default function AIStylingPage() {
               {/* V1.3: Secondary - Manual outfit entry */}
               <Button
                 variant="outline"
-                className="w-full h-11 rounded-lg text-sm"
+                className="w-full h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
                 onClick={() => handleEnterCanvas('manual')}
               >
                 <Pencil className="h-4 w-4 mr-2" />
@@ -314,15 +316,18 @@ export default function AIStylingPage() {
 
             {/* Reference image entry */}
             <div className="px-4 pt-4">
-              <button className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
-                <div className="h-10 w-10 rounded-full bg-ai-50 flex items-center justify-center">
+              <Button
+                variant="outline"
+                className="w-full h-auto py-4 px-4 justify-start gap-3 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+              >
+                <div className="h-10 w-10 rounded-full bg-ai-50/80 flex items-center justify-center ai-glow">
                   <ImageIcon className="h-5 w-5 text-ai-600" />
                 </div>
                 <div className="text-left flex-1">
                   <p className="text-sm font-medium text-foreground">用参考图搭配</p>
                   <p className="text-xs text-muted-foreground">上传一张图片，AI 用你的衣物模仿风格</p>
                 </div>
-              </button>
+              </Button>
             </div>
 
             {/* History entry */}
@@ -342,7 +347,7 @@ export default function AIStylingPage() {
         {pageState === 'loading' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
             <div className="w-full max-w-xs space-y-6 text-center">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto ai-glow">
                 <Sparkles className="h-8 w-8 text-primary animate-pulse" />
               </div>
               <Progress value={progress} className="h-1.5" />
@@ -374,7 +379,7 @@ export default function AIStylingPage() {
         {pageState === 'result' && (
           <>
             {/* Header */}
-            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/50">
+            <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
               <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
@@ -400,16 +405,16 @@ export default function AIStylingPage() {
 
             {/* Outfit result area - 55-62% of height */}
             <div className="px-4 pt-4">
-              <div className="rounded-xl bg-gradient-to-b from-muted/60 to-muted/30 p-4 min-h-[320px]">
+              <div className="rounded-xl outfit-stage noise-texture p-4 min-h-[320px]">
                 <div className="flex items-center justify-center gap-3 flex-wrap">
                   {outfit.items.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => handleItemSelect(item)}
-                      className={`group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border-2 overflow-hidden transition-all duration-200 hover:shadow-md ${
+                      className={`group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background overflow-hidden transition-all duration-200 hover:shadow-lg card-interactive ${
                         selectedItem?.id === item.id
-                          ? 'border-primary shadow-md'
-                          : 'border-border/30 hover:border-primary/30'
+                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                          : 'border border-border/20'
                       }`}
                     >
                       <img
@@ -418,12 +423,12 @@ export default function AIStylingPage() {
                         className="w-full h-full object-cover"
                       />
                       {lockedItems.has(item.id) && (
-                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center">
                           <Lock className="h-3 w-3 text-primary-foreground" />
                         </div>
                       )}
-                      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
-                        <p className="text-[10px] text-white truncate">{item.subCategory}</p>
+                      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1.5 bg-gradient-to-t from-black/50 via-black/20 to-transparent">
+                        <p className="text-[10px] text-white/90 truncate font-medium">{item.subCategory}</p>
                       </div>
                     </button>
                   ))}
@@ -445,11 +450,11 @@ export default function AIStylingPage() {
 
             {/* V1.3: Actions - Today wear, Change, Edit outfit */}
             <div className="px-4 pt-5 flex gap-3">
-              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm">
+              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all">
                 <Check className="h-4 w-4 mr-2" />
                 今天穿
               </Button>
-              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm" onClick={handleBack}>
+              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={handleBack}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 换一套
               </Button>
@@ -457,13 +462,14 @@ export default function AIStylingPage() {
 
             {/* V1.3: Edit outfit entry - enters canvas editing state */}
             <div className="px-4 pt-3">
-              <button
+              <Button
+                variant="outline"
+                className="w-full h-11 rounded-lg border-border/50 hover:bg-muted/30 text-sm"
                 onClick={() => handleEnterCanvas('edit')}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors text-sm text-foreground"
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4 mr-2" />
                 编辑搭配
-              </button>
+              </Button>
             </div>
 
             {/* Selected item actions */}
@@ -521,7 +527,7 @@ export default function AIStylingPage() {
         {pageState === 'canvas' && (
           <>
             {/* Canvas Header */}
-            <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/50">
+            <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
               <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>

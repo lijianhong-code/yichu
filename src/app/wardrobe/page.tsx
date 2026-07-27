@@ -76,11 +76,11 @@ export default function WardrobePage() {
   const getStatusBadge = (status: WardrobeItem['status']) => {
     switch (status) {
       case 'washing':
-        return <Badge className="text-[10px] absolute top-2 right-2 bg-warning/10 text-warning border-warning/20">洗衣中</Badge>;
+        return <Badge className="text-[10px] absolute top-2 right-2 bg-warning-bg/90 text-warning-fg border-0 backdrop-blur-sm">洗衣中</Badge>;
       case 'lent':
-        return <Badge className="text-[10px] absolute top-2 right-2 bg-info/10 text-info border-info/20">借出</Badge>;
+        return <Badge className="text-[10px] absolute top-2 right-2 bg-info-bg/90 text-info-fg border-0 backdrop-blur-sm">借出</Badge>;
       case 'pending_review':
-        return <Badge variant="outline" className="text-[10px] absolute top-2 right-2 border-warning text-warning">待确认</Badge>;
+        return <Badge variant="outline" className="text-[10px] absolute top-2 right-2 border-warning-fg text-warning-fg bg-background/80 backdrop-blur-sm">待确认</Badge>;
       default:
         return null;
     }
@@ -89,7 +89,7 @@ export default function WardrobePage() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/50">
+      <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -113,23 +113,23 @@ export default function WardrobePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索衣物，如 &quot;黑色通勤上衣&quot;"
-              className="pl-9 h-10 bg-muted/40 border-border/50 rounded-lg text-sm placeholder:text-muted-foreground/50"
+              className="pl-9 h-10 bg-muted/30 border-border/40 rounded-lg text-sm placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
             />
           </div>
 
           {/* View mode tabs */}
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'items' | 'outfits')} className="mb-3">
-            <TabsList className="h-9 bg-muted/40 rounded-lg p-0.5">
+            <TabsList className="h-9 bg-muted/30 rounded-lg p-0.5 border border-border/30">
               <TabsTrigger
                 value="items"
-                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/30"
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
                 单品
               </TabsTrigger>
               <TabsTrigger
                 value="outfits"
-                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/30"
               >
                 <Grid3x3 className="h-3.5 w-3.5" />
                 穿搭
@@ -141,18 +141,20 @@ export default function WardrobePage() {
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2 pb-2">
               {categories.map((cat) => (
-                <button
+                <Button
                   key={cat.value}
+                  variant={activeCategory === cat.value ? 'secondary' : 'outline'}
+                  size="sm"
                   onClick={() => setActiveCategory(cat.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                  className={`rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                     activeCategory === cat.value
-                      ? 'bg-primary/10 text-primary border border-primary/20'
-                      : 'bg-muted/40 text-muted-foreground border border-border/30 hover:bg-muted/60'
+                      ? 'chip-selected text-primary border-0'
+                      : 'bg-background/60 text-muted-foreground border-border/30 hover:bg-muted/50'
                   }`}
                 >
                   {cat.label}
                   <span className="ml-1 opacity-60">{itemCounts[cat.value] || 0}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </ScrollArea>
@@ -165,8 +167,8 @@ export default function WardrobePage() {
           <>
             {filteredItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center mb-4">
-                  <Shirt className="h-8 w-8 text-muted-foreground/50" />
+                <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
+                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
                 </div>
                 <p className="text-sm font-medium text-foreground mb-1">没有找到匹配的衣物</p>
                 <p className="text-xs text-muted-foreground">试试其他搜索词或筛选条件</p>
@@ -177,16 +179,18 @@ export default function WardrobePage() {
                   <button
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className="group relative rounded-lg bg-muted/30 border border-border/30 overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20 active:scale-[0.98] text-left"
+                    className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
                   >
                     {/* Image area - 4:5 ratio */}
-                    <div className="relative aspect-[4/5] bg-muted/50 overflow-hidden">
+                    <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden">
                       <img
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                       {getStatusBadge(item.status)}
+                      {/* Subtle gradient overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     {/* Info */}
                     <div className="p-2.5">
@@ -204,20 +208,20 @@ export default function WardrobePage() {
             {outfits.map((outfit) => (
               <button
                 key={outfit.id}
-                className="group relative rounded-lg bg-muted/30 border border-border/30 overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20 text-left"
+                className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 card-interactive text-left"
               >
                 {/* Outfit thumbnail - 3:4 ratio */}
-                <div className="relative aspect-[3/4] bg-muted/50 p-3 flex items-center justify-center">
+                <div className="relative aspect-[3/4] bg-muted/40 p-3 flex items-center justify-center">
                   <div className="grid grid-cols-2 gap-1.5 w-full">
                     {outfit.items.slice(0, 4).map((item) => (
-                      <div key={item.id} className="aspect-square rounded-md bg-background overflow-hidden">
+                      <div key={item.id} className="aspect-square rounded-md bg-background overflow-hidden shadow-sm">
                         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
                   {outfit.source === 'ai_text' && (
-                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-ai-50 flex items-center justify-center">
-                      <span className="text-[8px] text-ai-600 font-medium">AI</span>
+                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-ai-50/90 backdrop-blur-sm flex items-center justify-center">
+                      <span className="text-[8px] text-ai-600 font-bold">AI</span>
                     </div>
                   )}
                 </div>
@@ -236,7 +240,7 @@ export default function WardrobePage() {
       <div className="fixed bottom-24 right-4 z-30">
         <Button
           size="icon"
-          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 fab-shadow"
           onClick={() => setShowAddMenu(true)}
         >
           <Plus className="h-6 w-6" />
@@ -250,34 +254,43 @@ export default function WardrobePage() {
             <SheetTitle>添加衣物</SheetTitle>
             <SheetDescription>选择添加方式</SheetDescription>
           </SheetHeader>
-          <div className="py-6 space-y-3">
-            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="py-6 space-y-3 stagger-children">
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Camera className="h-5 w-5 text-primary" />
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-foreground">拍摄单件</p>
                 <p className="text-xs text-muted-foreground">拍照自动识别衣物信息</p>
               </div>
-            </button>
-            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <ImageIcon className="h-5 w-5 text-primary" />
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-foreground">相册批量导入</p>
                 <p className="text-xs text-muted-foreground">从相册选择多张图片</p>
               </div>
-            </button>
-            <button className="w-full flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Shirt className="h-5 w-5 text-primary" />
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-foreground">添加整套穿搭</p>
                 <p className="text-xs text-muted-foreground">手动创建一套搭配</p>
               </div>
-            </button>
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -288,7 +301,7 @@ export default function WardrobePage() {
           {selectedItem && (
             <>
               {/* Image */}
-              <div className="aspect-square bg-muted/50 relative">
+              <div className="aspect-square bg-muted/40 relative">
                 <img
                   src={selectedItem.imageUrl}
                   alt={selectedItem.name}
@@ -336,7 +349,7 @@ export default function WardrobePage() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 text-sm">
+                  <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 text-sm btn-primary-glow">
                     用它搭配
                   </Button>
                   <Button variant="outline" size="icon" className="h-10 w-10">
@@ -364,19 +377,21 @@ export default function WardrobePage() {
               <p className="text-sm font-medium text-foreground mb-2">品类</p>
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
-                  <button
+                  <Button
                     key={cat.value}
-                    className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                    variant={activeCategory === cat.value ? 'secondary' : 'outline'}
+                    size="sm"
+                    className={`rounded-full text-xs ${
                       activeCategory === cat.value
-                        ? 'bg-primary/10 text-primary border border-primary/20'
-                        : 'bg-muted/40 text-muted-foreground border border-border/30'
+                        ? 'chip-selected text-primary border-0'
+                        : 'bg-muted/30 text-muted-foreground border-border/30'
                     }`}
                     onClick={() => {
                       setActiveCategory(cat.value);
                     }}
                   >
                     {cat.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -385,12 +400,9 @@ export default function WardrobePage() {
               <p className="text-sm font-medium text-foreground mb-2">颜色</p>
               <div className="flex flex-wrap gap-2">
                 {['黑色', '白色', '蓝色', '灰色', '棕色'].map((color) => (
-                  <button
-                    key={color}
-                    className="px-3 py-1.5 rounded-full text-xs bg-muted/40 text-muted-foreground border border-border/30"
-                  >
+                  <Button key={color} variant="outline" size="sm" className="rounded-full text-xs bg-muted/20 border-border/30">
                     {color}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -399,19 +411,16 @@ export default function WardrobePage() {
               <p className="text-sm font-medium text-foreground mb-2">季节</p>
               <div className="flex flex-wrap gap-2">
                 {['春夏', '春秋', '秋冬', '四季'].map((season) => (
-                  <button
-                    key={season}
-                    className="px-3 py-1.5 rounded-full text-xs bg-muted/40 text-muted-foreground border border-border/30"
-                  >
+                  <Button key={season} variant="outline" size="sm" className="rounded-full text-xs bg-muted/20 border-border/30">
                     {season}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border flex gap-3">
+          <div className="absolute bottom-0 left-0 right-0 p-4 glass-surface-strong border-t border-border/30 flex gap-3">
             <Button variant="outline" className="flex-1 h-10">重置</Button>
-            <Button className="flex-1 h-10 bg-primary hover:bg-primary/90" onClick={() => setShowFilter(false)}>
+            <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 btn-primary-glow" onClick={() => setShowFilter(false)}>
               查看 {filteredItems.length} 件结果
             </Button>
           </div>

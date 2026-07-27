@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
   SheetContent,
@@ -57,8 +58,8 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 border-2 border-border/50">
-            <AvatarFallback className="bg-primary/10 text-primary text-lg font-medium">
+          <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
+            <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
               {userProfile.name.charAt(0)}
             </AvatarFallback>
           </Avatar>
@@ -74,44 +75,46 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 mt-4">
-          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
-            <p className="text-xl font-semibold text-foreground">{userProfile.totalItems}</p>
+        <div className="flex items-center gap-3 mt-4">
+          <div className="flex-1 text-center p-3 rounded-lg bg-muted/20 border border-border/20 card-interactive">
+            <p className="text-xl font-semibold text-foreground tabular-nums">{userProfile.totalItems}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">衣物</p>
           </div>
-          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
-            <p className="text-xl font-semibold text-foreground">{userProfile.totalOutfits}</p>
+          <div className="flex-1 text-center p-3 rounded-lg bg-muted/20 border border-border/20 card-interactive">
+            <p className="text-xl font-semibold text-foreground tabular-nums">{userProfile.totalOutfits}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">穿搭</p>
           </div>
-          <div className="flex-1 text-center p-3 rounded-lg bg-muted/30 border border-border/30">
-            <p className="text-xl font-semibold text-primary">{utilizationRate}%</p>
+          <div className="flex-1 text-center p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <p className="text-xl font-semibold text-primary tabular-nums">{utilizationRate}%</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">利用率</p>
           </div>
         </div>
       </header>
 
-      <Separator />
+      <div className="section-divider mx-4" />
 
       {/* AI Insight about me */}
       <section className="px-4 py-5">
-        <Card className="border-border/50 bg-gradient-to-br from-ai-50/30 to-background overflow-hidden">
+        <Card className="border-border/30 insight-gradient overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-full bg-ai-100 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="h-4.5 w-4.5 text-ai-600" />
+              <div className="h-9 w-9 rounded-full bg-ai-100/80 flex items-center justify-center flex-shrink-0 ai-glow">
+                <Sparkles className="h-4 w-4 text-ai-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-ai-600 mb-1">AI 眼中的我</p>
                 <p className="text-sm text-foreground leading-relaxed">
                   你偏好简约、干练的风格，喜欢黑白色系。最近开始尝试更多蓝色单品，商务休闲是你的主要穿搭方向。
                 </p>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 -ml-2 mt-2 text-xs text-primary hover:text-primary hover:bg-primary/5"
                   onClick={() => setShowPreferences(true)}
-                  className="flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
                 >
                   查看详情
-                  <ChevronRight className="h-3 w-3" />
-                </button>
+                  <ChevronRight className="h-3 w-3 ml-0.5" />
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -120,28 +123,28 @@ export default function ProfilePage() {
 
       {/* Monthly insight */}
       <section className="px-4 pb-5">
-        <Card className="border-border/50">
+        <Card className="border-border/30 card-elevated">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <p className="text-sm font-medium text-foreground">本月洞察</p>
               </div>
-              <Badge variant="secondary" className="text-[10px]">7月</Badge>
+              <Badge variant="secondary" className="text-[10px] bg-primary/5 text-primary border-primary/10">7月</Badge>
             </div>
 
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs text-muted-foreground">衣橱利用率</span>
-                  <span className="text-xs font-medium text-foreground">{utilizationRate}%</span>
+                  <span className="text-xs font-medium text-foreground tabular-nums">{utilizationRate}%</span>
                 </div>
                 <Progress value={utilizationRate} className="h-2" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs text-muted-foreground">AI 搭配采用率</span>
-                  <span className="text-xs font-medium text-foreground">{adoptionRate}%</span>
+                  <span className="text-xs font-medium text-foreground tabular-nums">{adoptionRate}%</span>
                 </div>
                 <Progress value={adoptionRate} className="h-2" />
               </div>
@@ -154,108 +157,121 @@ export default function ProfilePage() {
         </Card>
       </section>
 
-      <Separator />
+      <div className="section-divider mx-4" />
 
       {/* Menu items */}
-      <section className="px-4 py-4 space-y-1">
+      <section className="px-4 py-4 space-y-0.5">
         {/* Wear log */}
-        <button
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
           onClick={() => setShowWearLog(true)}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
         >
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <Calendar className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">穿着记录</p>
             <p className="text-xs text-muted-foreground">查看每日穿搭历史</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
 
         {/* Style preferences */}
-        <button
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
           onClick={() => setShowPreferences(true)}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
         >
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <Palette className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">风格与穿着偏好</p>
             <p className="text-xs text-muted-foreground">管理你的穿搭偏好设置</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
 
         {/* Body & size */}
-        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <User className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">身形与尺码</p>
             <p className="text-xs text-muted-foreground">选填，帮助更精准推荐</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
 
         <Separator className="my-2" />
 
         {/* Settings */}
-        <button
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
           onClick={() => setShowSettings(true)}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors"
         >
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <Settings className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">设置</p>
             <p className="text-xs text-muted-foreground">通知、隐私与数据管理</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
 
         {/* Privacy */}
-        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <Shield className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">隐私设置</p>
             <p className="text-xs text-muted-foreground">权限管理与数据控制</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
 
         {/* Help */}
-        <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center">
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-muted/40"
+        >
+          <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
             <HelpCircle className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-foreground">帮助与反馈</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </Button>
       </section>
 
       {/* Danger zone */}
       <section className="px-4 pt-2 pb-8">
         <Separator className="mb-4" />
-        <button
+        <Button
+          variant="ghost"
+          className="w-full h-auto py-3 px-3 justify-start gap-3 rounded-lg hover:bg-destructive/5"
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-destructive/5 transition-colors"
         >
-          <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-medium text-destructive">注销账号</p>
             <p className="text-xs text-muted-foreground">删除所有数据，不可恢复</p>
           </div>
-        </button>
+        </Button>
       </section>
 
       {/* Preferences Sheet */}
@@ -266,7 +282,7 @@ export default function ProfilePage() {
             <SheetDescription>管理你的穿搭偏好，AI 会据此推荐</SheetDescription>
           </SheetHeader>
           <ScrollArea className="h-[calc(100vh-160px)]">
-            <div className="py-4 space-y-5">
+            <div className="py-4 space-y-5 stagger-children">
               <div>
                 <p className="text-sm font-medium text-foreground mb-2">常用场合</p>
                 <div className="flex flex-wrap gap-2">
@@ -306,7 +322,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm font-medium text-foreground mb-3">AI 推断的偏好</p>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/20">
                     <div>
                       <p className="text-xs font-medium text-foreground">不喜欢高跟鞋通勤</p>
                       <p className="text-[10px] text-muted-foreground">基于 3 次行为推断</p>
@@ -315,7 +331,7 @@ export default function ProfilePage() {
                       <XIcon className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/20">
                     <div>
                       <p className="text-xs font-medium text-foreground">偏好宽松版型</p>
                       <p className="text-[10px] text-muted-foreground">基于 5 次行为推断</p>
@@ -339,11 +355,11 @@ export default function ProfilePage() {
             <SheetDescription>你的每日穿搭历史</SheetDescription>
           </SheetHeader>
           <ScrollArea className="h-[calc(100vh-160px)]">
-            <div className="py-4 space-y-2">
+            <div className="py-4 space-y-2 stagger-children">
               {wearLogs.map((log) => (
-                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
+                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 border border-border/20 card-interactive">
                   <div className="text-center min-w-[40px]">
-                    <p className="text-xs font-medium text-foreground">{log.date.slice(-2)}</p>
+                    <p className="text-xs font-medium text-foreground tabular-nums">{log.date.slice(-2)}</p>
                     <p className="text-[10px] text-muted-foreground">日</p>
                   </div>
                   <Separator orientation="vertical" className="h-8" />
@@ -435,6 +451,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-// Need to import ScrollArea for the sheets
-import { ScrollArea } from '@/components/ui/scroll-area';
