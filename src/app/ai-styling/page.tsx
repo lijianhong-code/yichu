@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Send,
   Sparkles,
@@ -23,12 +23,19 @@ import {
   Plus,
   Pencil,
   Sparkles as SparklesIcon,
+  X,
+  Undo2,
+  Redo2,
+  MoveHorizontal,
+  RotateCcw,
+  BookmarkPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sheet,
   SheetContent,
@@ -56,8 +63,8 @@ const iconMap: Record<string, React.ReactNode> = {
   ClipboardList: <ClipboardList className="h-4 w-4" />,
 };
 
-// V1.3: 4 states - input, loading, result, canvas
-type PageState = 'input' | 'loading' | 'result' | 'canvas';
+// V1.4: 4 states sharing the same outfit area
+type PageState = 'empty' | 'loading' | 'result' | 'editing';
 
 const loadingStages = [
   { label: '正在理解场合', duration: 800 },
@@ -66,8 +73,37 @@ const loadingStages = [
   { label: '正在生成搭配方案', duration: 1000 },
 ];
 
+// Mock 3 candidate outfits
+const mockCandidates = [
+  {
+    id: 'candidate-1',
+    label: '稳妥通勤',
+    outfit: todayOutfit,
+  },
+  {
+    id: 'candidate-2',
+    label: '更轻松',
+    outfit: {
+      ...todayOutfit,
+      name: '轻松商务风',
+      explanation: '针织衫搭配休闲裤，舒适又不失体面，适合轻松的办公环境。',
+      items: todayOutfit.items.slice(0, 3),
+    },
+  },
+  {
+    id: 'candidate-3',
+    label: '更有风格',
+    outfit: {
+      ...todayOutfit,
+      name: '时尚通勤风',
+      explanation: '衬衫搭配高腰裤与乐福鞋，经典配色中融入个性细节。',
+      items: [todayOutfit.items[0], todayOutfit.items[2], todayOutfit.items[4]],
+    },
+  },
+];
+
 export default function AIStylingPage() {
-  const [pageState, setPageState] = useState<PageState>('input');
+  const [pageState, setPageState] = useState<PageState>('empty');
   const [inputValue, setInputValue] = useState('');
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -76,26 +112,36 @@ export default function AIStylingPage() {
   const [showReplacement, setShowReplacement] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
 
-  // Canvas state
+  // V1.4: Candidate switching
+  const [activeCandidateIndex, setActiveCandidateIndex] = useState(0);
+  const [hasViewedAll, setHasViewedAll] = useState(false);
+  const [candidates, setCandidates] = useState(mockCandidates);
+
+  // Canvas / editing state
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [canvasSource, setCanvasSource] = useState<'ai' | 'manual' | 'edit'>('ai');
   const [trayOpen, setTrayOpen] = useState(false);
   const [selectedTrayItems, setSelectedTrayItems] = useState<WardrobeItem[]>([]);
+  const [editHistory, setEditHistory] = useState<{ items: CanvasItem[] }[]>([]);
+  const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
 
-  const outfit = todayOutfit;
+  const currentOutfit = candidates[activeCandidateIndex]?.outfit ?? todayOutfit;
+  const outfitItems = currentOutfit?.items ?? [];
 
-  // Initialize canvas items from outfit
-  const initCanvasFromOutfit = (source: 'ai' | 'manual' | 'edit') => {
+  // Initialize canvas from outfit
+  const initCanvasFromOutfit = useCallback((source: 'ai' | 'manual' | 'edit', outfitData?: typeof todayOutfit) => {
     setCanvasSource(source);
+    const data = outfitData ?? currentOutfit;
     if (source === 'manual') {
       setCanvasItems([]);
-      setTrayOpen(true); // Open tray by default for manual mode
+      setTrayOpen(true);
     } else {
-      // Convert outfit items to canvas items with auto-layout positions
-      const items: CanvasItem[] = outfit.items.map((wardrobeItem, index) => {
-        const totalItems = outfit.items.length;
+      const items: CanvasItem[] = (data?.items ?? []).map((wardrobeItem, index) => {
+        const totalItems = (data?.items ?? []).length;
         const cols = Math.min(3, totalItems);
         const row = Math.floor(index / cols);
         const col = index % cols;
@@ -103,8 +149,8 @@ export default function AIStylingPage() {
           id: `canvas-${wardrobeItem.id}`,
           itemId: wardrobeItem.id,
           item: wardrobeItem,
-          x: 20 + col * 30, // percentage
-          y: 15 + row * 35, // percentage
+          x: 20 + col * 30,
+          y: 15 + row * 35,
           scale: 1,
           locked: false,
           zIndex: index,
@@ -113,15 +159,47 @@ export default function AIStylingPage() {
       setCanvasItems(items);
       setTrayOpen(false);
     }
-  };
+    setEditHistory([{ items: canvasItems }]);
+    setEditHistoryIndex(0);
+  }, [currentOutfit, canvasItems]);
 
+  // Push edit history
+  const pushEditHistory = useCallback((newItems: CanvasItem[]) => {
+    setEditHistory(prev => {
+      const truncated = prev.slice(0, editHistoryIndex + 1);
+      const next = [...truncated, { items: newItems }].slice(-20);
+      setEditHistoryIndex(next.length - 1);
+      return next;
+    });
+  }, [editHistoryIndex]);
+
+  const handleUndo = useCallback(() => {
+    if (editHistoryIndex > 0) {
+      const newIndex = editHistoryIndex - 1;
+      setEditHistoryIndex(newIndex);
+      setCanvasItems(editHistory[newIndex].items);
+    }
+  }, [editHistory, editHistoryIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (editHistoryIndex < editHistory.length - 1) {
+      const newIndex = editHistoryIndex + 1;
+      setEditHistoryIndex(newIndex);
+      setCanvasItems(editHistory[newIndex].items);
+    }
+  }, [editHistory, editHistoryIndex]);
+
+  // Generate
   const handleGenerate = () => {
     if (!inputValue.trim()) return;
     setPageState('loading');
     setCurrentStage(0);
     setProgress(0);
+    setHasViewedAll(false);
+    setActiveCandidateIndex(0);
   };
 
+  // Loading animation
   useEffect(() => {
     if (pageState !== 'loading') return;
 
@@ -147,7 +225,15 @@ export default function AIStylingPage() {
     };
   }, [pageState]);
 
+  // Track viewing all candidates
+  useEffect(() => {
+    if (pageState === 'result' && activeCandidateIndex >= 2) {
+      setHasViewedAll(true);
+    }
+  }, [activeCandidateIndex, pageState]);
+
   const handleItemSelect = (item: WardrobeItem) => {
+    if (pageState === 'editing') return;
     setSelectedItem(item);
     setShowReplacement(true);
   };
@@ -162,35 +248,33 @@ export default function AIStylingPage() {
   };
 
   const handleBack = () => {
-    if (pageState === 'canvas') {
+    if (pageState === 'editing') {
       setShowUnsavedDialog(true);
       return;
     }
-    setPageState('input');
+    setPageState('empty');
     setCurrentStage(0);
     setProgress(0);
   };
 
-  const handleEnterCanvas = (source: 'ai' | 'manual' | 'edit') => {
+  const handleEnterEditing = (source: 'ai' | 'manual' | 'edit') => {
     initCanvasFromOutfit(source);
-    setPageState('canvas');
+    setPageState('editing');
   };
 
-  const handleCanvasComplete = () => {
-    // Save and return to result or input
+  const handleEditingComplete = () => {
     setPageState('result');
+    setTrayOpen(false);
   };
 
   const handleAIComplete = () => {
-    // AI completion: add missing slots
-    // In a real app, this would call the AI service
     const existingCategories = new Set(
       canvasItems.map((ci) => wardrobeItems.find((w) => w.id === ci.itemId)?.category)
     );
     const missingCategories = ['bottoms', 'shoes'].filter((c) => !existingCategories.has(c));
 
     const newItems = [...canvasItems];
-    missingCategories.forEach((cat, index) => {
+    missingCategories.forEach((cat) => {
       const candidate = wardrobeItems.find((w) => w.category === cat && !newItems.some((ni) => ni.item.id === w.id));
       if (candidate) {
         newItems.push({
@@ -206,12 +290,11 @@ export default function AIStylingPage() {
       }
     });
     setCanvasItems(newItems);
+    pushEditHistory(newItems);
   };
 
   const handleAddFromTray = (item: WardrobeItem) => {
-    // Check if already in canvas
     if (canvasItems.some((ci) => ci.item.id === item.id)) return;
-
     const newItem: CanvasItem = {
       id: `canvas-${item.id}`,
       itemId: item.id,
@@ -222,192 +305,133 @@ export default function AIStylingPage() {
       locked: false,
       zIndex: canvasItems.length,
     };
-    setCanvasItems((prev) => [...prev, newItem]);
+    const newItems = [...canvasItems, newItem];
+    setCanvasItems(newItems);
+    pushEditHistory(newItems);
+  };
+
+  // Candidate switching
+  const handleCandidateSelect = (index: number) => {
+    if (index === activeCandidateIndex) return;
+    setActiveCandidateIndex(index);
+    setSelectedItem(null);
   };
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background pb-24">
-        {/* ==================== INPUT STATE ==================== */}
-        {pageState === 'input' && (
-          <>
-            {/* Header */}
-            <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
-              <div className="px-4 py-3">
-                <h1 className="text-lg font-semibold text-foreground tracking-tight">AI 搭配</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">描述你的需求，AI 从衣橱中为你搭配</p>
-              </div>
-            </header>
-
-            {/* Context bar */}
-            <div className="px-4 pt-4">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/30">
-                <ThermometerSun className="h-4 w-4 text-accent-foreground" />
-                <span className="text-xs text-foreground">上海</span>
-                <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">22-28°C 多云</span>
-                <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">今天</span>
-              </div>
-            </div>
-
-            {/* Input area */}
-            <div className="px-4 pt-4">
-              <div className="relative">
-                <Textarea
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                  className="min-h-[100px] pr-12 bg-muted/20 border-border/40 rounded-lg text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
-                />
-                <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                  {/* AI indicator dot - 4px per PRD */}
-                  <div className="h-1 w-1 rounded-full bg-ai-400" />
-                  <Button
-                    size="icon"
-                    className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
-                    onClick={handleGenerate}
-                    disabled={!inputValue.trim()}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Quick scenarios */}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {quickScenarios.map((scenario) => (
-                  <Button
-                    key={scenario.label}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setInputValue(scenario.label)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted/50 border-border/30 text-xs font-medium text-foreground transition-all hover:border-primary/20"
-                  >
-                    {iconMap[scenario.icon]}
-                    {scenario.label}
-                  </Button>
-                ))}
+      <div className={`min-h-screen bg-background ${pageState === 'editing' ? 'pb-4' : 'pb-24'}`}>
+        {/* ==================== CONTEXT BAR (always visible) ==================== */}
+        <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {(pageState === 'result' || pageState === 'editing') && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <div>
+                <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                  {pageState === 'editing'
+                    ? (canvasSource === 'manual' ? '手动搭配' : '编辑搭配')
+                    : '搭配'}
+                </h1>
+                {pageState !== 'empty' && (
+                  <p className="text-[10px] text-muted-foreground">
+                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : currentOutfit.occasion}
+                  </p>
+                )}
               </div>
             </div>
-
-            {/* V1.3: Two entry points - AI generate + Manual outfit */}
-            <div className="px-4 pt-5 space-y-3">
-              {/* Primary: AI Generate */}
-              <Button
-                className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
-                onClick={handleGenerate}
-                disabled={!inputValue.trim()}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                开始搭配
-              </Button>
-
-              {/* V1.3: Secondary - Manual outfit entry */}
-              <Button
-                variant="outline"
-                className="w-full h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-                onClick={() => handleEnterCanvas('manual')}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                手动搭一套
-              </Button>
-            </div>
-
-            {/* Reference image entry */}
-            <div className="px-4 pt-4">
-              <Button
-                variant="outline"
-                className="w-full h-auto py-4 px-4 justify-start gap-3 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
-              >
-                <div className="h-10 w-10 rounded-full bg-ai-50/80 flex items-center justify-center ai-glow">
-                  <ImageIcon className="h-5 w-5 text-ai-600" />
-                </div>
-                <div className="text-left flex-1">
-                  <p className="text-sm font-medium text-foreground">用参考图搭配</p>
-                  <p className="text-xs text-muted-foreground">上传一张图片，AI 用你的衣物模仿风格</p>
-                </div>
-              </Button>
-            </div>
-
-            {/* History entry */}
-            <div className="px-4 pt-4">
-              <button
-                onClick={() => setShowHistory(true)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <History className="h-3.5 w-3.5" />
-                查看历史方案
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* ==================== LOADING STATE ==================== */}
-        {pageState === 'loading' && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-            <div className="w-full max-w-xs space-y-6 text-center">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto ai-glow">
-                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-              </div>
-              <Progress value={progress} className="h-1.5" />
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">
-                  {loadingStages[currentStage]?.label}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  请稍候，正在为你寻找最佳搭配
-                </p>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                {loadingStages.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      index <= currentStage
-                        ? 'w-4 bg-primary'
-                        : 'w-1.5 bg-muted-foreground/20'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==================== RESULT STATE ==================== */}
-        {pageState === 'result' && (
-          <>
-            {/* Header */}
-            <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{outfit.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      上海 · 22-28°C · {outfit.occasion}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1">
+              {pageState === 'editing' ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo} disabled={editHistoryIndex <= 0}>
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>撤销</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRedo} disabled={editHistoryIndex >= editHistory.length - 1}>
+                        <Redo2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>重做</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                <>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory(true)}>
                     <History className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMoreMenu(true)}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* ==================== PERMANENT OUTFIT AREA (48-56% height) ==================== */}
+        <div className="px-4 pt-4">
+          <div className="rounded-xl outfit-stage noise-texture relative overflow-hidden" style={{ minHeight: '48vh', maxHeight: '56vh' }}>
+            
+            {/* EMPTY STATE */}
+            {pageState === 'empty' && (
+              <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8">
+                <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">当前没有搭配</p>
+                <p className="text-xs text-muted-foreground/60">描述需求让 AI 帮你搭，或手动组合</p>
+              </div>
+            )}
+
+            {/* LOADING STATE - skeleton in outfit area */}
+            {pageState === 'loading' && (
+              <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8 px-6">
+                {/* Skeleton items */}
+                <div className="flex items-center justify-center gap-3 flex-wrap mb-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg" />
+                  ))}
+                </div>
+                {/* Progress */}
+                <div className="w-full max-w-xs space-y-3">
+                  <Progress value={progress} className="h-1" />
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {loadingStages[currentStage]?.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      请稍候，正在为你寻找最佳搭配
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    {loadingStages.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          index <= currentStage
+                            ? 'w-4 bg-primary'
+                            : 'w-1.5 bg-muted-foreground/20'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </header>
+            )}
 
-            {/* Outfit result area - 55-62% of height */}
-            <div className="px-4 pt-4">
-              <div className="rounded-xl outfit-stage noise-texture p-4 min-h-[320px]">
-                <div className="flex items-center justify-center gap-3 flex-wrap">
-                  {outfit.items.map((item) => (
+            {/* RESULT STATE - outfit display */}
+            {pageState === 'result' && (
+              <div className="flex flex-col h-full min-h-[48vh]">
+                <div className="flex-1 flex items-center justify-center gap-3 flex-wrap p-4">
+                  {outfitItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => handleItemSelect(item)}
@@ -433,48 +457,188 @@ export default function AIStylingPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Candidate thumbnails at bottom of outfit area */}
+                <div className="px-4 pb-3">
+                  <div className="flex items-center gap-2">
+                    {candidates.map((candidate, index) => (
+                      <button
+                        key={candidate.id}
+                        onClick={() => handleCandidateSelect(index)}
+                        className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
+                          index === activeCandidateIndex
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                            : 'border-border/30 bg-background/60 hover:border-border/60'
+                        }`}
+                      >
+                        <div className="flex -space-x-1">
+                          {candidate.outfit.items.slice(0, 2).map((item) => (
+                            <div key={item.id} className="h-6 w-6 rounded-full bg-muted overflow-hidden border border-background">
+                              <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                        <span className={`text-xs font-medium truncate ${
+                          index === activeCandidateIndex ? 'text-primary' : 'text-muted-foreground'
+                        }`}>
+                          {candidate.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* EDITING STATE - canvas */}
+            {pageState === 'editing' && (
+              <OutfitCanvas
+                initialItems={canvasItems}
+                editable
+                onSave={(items) => {
+                  setCanvasItems(items);
+                  pushEditHistory(items);
+                }}
+                onAIComplete={(lockedIds) => {
+                  console.log('AI complete locked:', lockedIds);
+                }}
+                onAddFromWardrobe={() => setTrayOpen(true)}
+                onReplaceItem={() => {}}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ==================== CONTEXTUAL BOTTOM ACTION AREA ==================== */}
+        
+        {/* EMPTY STATE actions */}
+        {pageState === 'empty' && (
+          <div className="px-4 pt-5 space-y-3">
+            {/* AI input */}
+            <div className="relative">
+              <Textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
+                className="min-h-[80px] pr-12 bg-muted/20 border-border/40 rounded-lg text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+              />
+              <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                <div className="h-1 w-1 rounded-full bg-ai-400" />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
+                  onClick={handleGenerate}
+                  disabled={!inputValue.trim()}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
-            {/* Explanation */}
-            <div className="px-4 pt-4">
-              <p className="text-sm text-foreground leading-relaxed">{outfit.explanation}</p>
-              <button
-                onClick={() => setShowWhy(true)}
-                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Sparkles className="h-3 w-3 text-ai-400" />
-                查看推荐理由
-              </button>
+            {/* Quick scenarios */}
+            <div className="flex flex-wrap gap-2">
+              {quickScenarios.map((scenario) => (
+                <Button
+                  key={scenario.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue(scenario.label)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted/50 border-border/30 text-xs font-medium text-foreground transition-all hover:border-primary/20"
+                >
+                  {iconMap[scenario.icon]}
+                  {scenario.label}
+                </Button>
+              ))}
             </div>
 
-            {/* V1.3: Actions - Today wear, Change, Edit outfit */}
-            <div className="px-4 pt-5 flex gap-3">
+            {/* Primary: AI Generate */}
+            <Button
+              className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
+              onClick={handleGenerate}
+              disabled={!inputValue.trim()}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              AI 帮我搭
+            </Button>
+
+            {/* Secondary: Manual outfit */}
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
+              onClick={() => handleEnterEditing('manual')}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              手动搭一套
+            </Button>
+
+            {/* Reference image entry */}
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-4 justify-start gap-3 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+            >
+              <div className="h-10 w-10 rounded-full bg-ai-50/80 flex items-center justify-center ai-glow">
+                <ImageIcon className="h-5 w-5 text-ai-600" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-sm font-medium text-foreground">用参考图搭配</p>
+                <p className="text-xs text-muted-foreground">上传一张图片，AI 用你的衣物模仿风格</p>
+              </div>
+            </Button>
+          </div>
+        )}
+
+        {/* RESULT STATE actions */}
+        {pageState === 'result' && (
+          <div className="px-4 pt-4 space-y-3">
+            {/* Explanation */}
+            <div className="flex items-start gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-foreground leading-relaxed flex-1">{currentOutfit.explanation}</p>
+            </div>
+            <button
+              onClick={() => setShowWhy(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              查看推荐理由
+            </button>
+
+            <Separator />
+
+            {/* Main actions */}
+            <div className="flex gap-3">
               <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all">
                 <Check className="h-4 w-4 mr-2" />
                 今天穿
               </Button>
-              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={handleBack}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                换一套
-              </Button>
+              {hasViewedAll ? (
+                <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={handleGenerate}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  重新生成
+                </Button>
+              ) : (
+                <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={() => {
+                  const next = (activeCandidateIndex + 1) % candidates.length;
+                  handleCandidateSelect(next);
+                }}>
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  下一套
+                </Button>
+              )}
             </div>
 
-            {/* V1.3: Edit outfit entry - enters canvas editing state */}
-            <div className="px-4 pt-3">
-              <Button
-                variant="outline"
-                className="w-full h-11 rounded-lg border-border/50 hover:bg-muted/30 text-sm"
-                onClick={() => handleEnterCanvas('edit')}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                编辑搭配
-              </Button>
-            </div>
+            {/* Edit outfit */}
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-lg border-border/50 hover:bg-muted/30 text-sm"
+              onClick={() => handleEnterEditing('edit')}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              编辑搭配
+            </Button>
 
             {/* Selected item actions */}
             {selectedItem && (
-              <div className="px-4 pt-3 flex gap-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -493,12 +657,12 @@ export default function AIStylingPage() {
                   {lockedItems.has(selectedItem.id) ? (
                     <>
                       <Unlock className="h-3.5 w-3.5 mr-1.5" />
-                      解锁
+                      取消保留
                     </>
                   ) : (
                     <>
-                      <Lock className="h-3.5 w-3.5 mr-1.5" />
-                      锁定
+                      <BookmarkPlus className="h-3.5 w-3.5 mr-1.5" />
+                      保留这件
                     </>
                   )}
                 </Button>
@@ -506,162 +670,106 @@ export default function AIStylingPage() {
             )}
 
             {/* Continue input */}
-            <div className="px-4 pt-5">
-              <div className="relative">
-                <Input
-                  placeholder="继续调整，如：鞋子换成平底"
-                  className="pr-20 h-10 bg-muted/30 border-border/50 rounded-lg text-sm"
-                />
-                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  <div className="h-1 w-1 rounded-full bg-ai-400" />
-                  <Button size="icon" className="h-7 w-7 rounded-md bg-primary">
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+            <div className="relative">
+              <Input
+                placeholder="继续调整，如：鞋子换成平底"
+                className="pr-20 h-10 bg-muted/30 border-border/50 rounded-lg text-sm"
+              />
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="h-1 w-1 rounded-full bg-ai-400" />
+                <Button size="icon" className="h-7 w-7 rounded-md bg-primary">
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* ==================== CANVAS EDITING STATE (V1.3) ==================== */}
-        {pageState === 'canvas' && (
-          <>
-            {/* Canvas Header */}
-            <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <p className="text-sm font-medium text-foreground">
-                    {canvasSource === 'manual' ? '手动搭配' : '编辑搭配'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          // Undo - handled by canvas component
-                          const event = new CustomEvent('canvas-undo');
-                          window.dispatchEvent(event);
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4 rotate-180" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>撤销</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          const event = new CustomEvent('canvas-redo');
-                          window.dispatchEvent(event);
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>重做</TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-            </header>
-
-            {/* Canvas Area - 3:4 ratio per PRD */}
-            <div className="px-4 pt-4">
-              <OutfitCanvas
-                initialItems={canvasItems}
-                editable
-                onSave={(items) => setCanvasItems(items)}
-                onAIComplete={(lockedIds) => {
-                  // AI complete returns locked IDs - in mock we just keep current items
-                  console.log('AI complete locked:', lockedIds)
-                }}
-                onAddFromWardrobe={() => setTrayOpen(true)}
-                onReplaceItem={() => {}}
-              />
-            </div>
-
+        {/* EDITING STATE actions */}
+        {pageState === 'editing' && (
+          <div className="px-4 pt-3 space-y-3">
             {/* Canvas Toolbar */}
-            <div className="px-4 pt-3">
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 rounded-lg text-xs shrink-0"
-                      onClick={() => setTrayOpen(true)}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      添加
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>从衣橱添加单品</TooltipContent>
-                </Tooltip>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-xs shrink-0"
+                    onClick={() => setTrayOpen(!trayOpen)}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    添加
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>从衣橱添加单品</TooltipContent>
+              </Tooltip>
 
-                {canvasItems.length > 0 && (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 rounded-lg text-xs shrink-0"
-                          onClick={() => {
-                            // AI Complete - fill missing slots
-                            handleAIComplete();
-                          }}
-                        >
-                          <SparklesIcon className="h-3.5 w-3.5 mr-1 text-ai-400" />
-                          AI 补全
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>AI 补充缺失槽位</TooltipContent>
-                    </Tooltip>
+              {canvasItems.length > 0 && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg text-xs shrink-0"
+                        onClick={handleAIComplete}
+                      >
+                        <SparklesIcon className="h-3.5 w-3.5 mr-1 text-ai-400" />
+                        AI 补全
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>AI 补充缺失槽位</TooltipContent>
+                  </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 rounded-lg text-xs shrink-0"
-                          onClick={() => {
-                            // Restore layout
-                            const event = new CustomEvent('canvas-restore-layout');
-                            window.dispatchEvent(event);
-                          }}
-                        >
-                          恢复排版
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>恢复系统自动布局</TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-              </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg text-xs shrink-0"
+                        onClick={() => {
+                          const event = new CustomEvent('canvas-restore-layout');
+                          window.dispatchEvent(event);
+                        }}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                        恢复排版
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>恢复系统自动布局</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg text-xs shrink-0"
+                        onClick={() => {
+                          const event = new CustomEvent('canvas-restore-size');
+                          window.dispatchEvent(event);
+                        }}
+                      >
+                        <MoveHorizontal className="h-3.5 w-3.5 mr-1" />
+                        恢复大小
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>重置选中单品尺寸</TooltipContent>
+                  </Tooltip>
+                </>
+              )}
             </div>
 
-            {/* Canvas Complete Button */}
-            <div className="px-4 pt-3">
-              <Button
-                className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm"
-                onClick={handleCanvasComplete}
-                disabled={canvasItems.length === 0}
-              >
-                完成
-              </Button>
-            </div>
+            {/* Complete button */}
+            <Button
+              className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm"
+              onClick={handleEditingComplete}
+            >
+              完成编辑
+            </Button>
 
-            {/* Wardrobe Tray - bottom drawer for adding items */}
+            {/* Wardrobe Tray */}
             <WardrobeTray
               expanded={trayOpen}
               onToggle={() => setTrayOpen(!trayOpen)}
@@ -670,12 +778,12 @@ export default function AIStylingPage() {
               onItemSelect={(item) => setSelectedTrayItems((prev) => [...prev, item])}
               onItemDeselect={(item) => setSelectedTrayItems((prev) => prev.filter((i) => i.id !== item.id))}
               onConfirmAdd={() => {
-                selectedTrayItems.forEach((item) => handleAddFromTray(item))
-                setSelectedTrayItems([])
-                setTrayOpen(false)
+                selectedTrayItems.forEach((item) => handleAddFromTray(item));
+                setSelectedTrayItems([]);
+                setTrayOpen(false);
               }}
             />
-          </>
+          </div>
         )}
 
         {/* ==================== SHEETS ==================== */}
@@ -700,15 +808,18 @@ export default function AIStylingPage() {
                   {wardrobeItems
                     .filter((item) => item.category === selectedItem?.category && item.id !== selectedItem?.id)
                     .map((item) => (
-                      <button
+                      <Button
                         key={item.id}
-                        className="group relative aspect-[3/4] rounded-lg bg-muted/30 border border-border/30 overflow-hidden hover:border-primary/40 transition-colors"
+                        variant="ghost"
+                        className="h-auto p-0 flex-col items-stretch overflow-hidden hover:bg-muted/50"
                       >
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/40 to-transparent">
-                          <p className="text-[9px] text-white truncate">{item.name}</p>
+                        <div className="relative aspect-[3/4] bg-muted/30">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                         </div>
-                      </button>
+                        <div className="p-1.5 w-full text-left">
+                          <p className="text-[10px] text-foreground truncate">{item.name}</p>
+                        </div>
+                      </Button>
                     ))}
                 </div>
               </div>
@@ -731,16 +842,20 @@ export default function AIStylingPage() {
             <ScrollArea className="h-[calc(100vh-160px)]">
               <div className="py-4 space-y-3">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
-                    <div className="h-12 w-12 rounded-md bg-muted/50 flex items-center justify-center">
+                  <Button
+                    key={i}
+                    variant="ghost"
+                    className="w-full h-auto p-3 justify-start gap-3 hover:bg-muted/50"
+                  >
+                    <div className="h-12 w-12 rounded-md bg-muted/50 flex items-center justify-center shrink-0">
                       <Shirt className="h-5 w-5 text-muted-foreground/50" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-medium text-foreground truncate">搭配方案 #{i}</p>
                       <p className="text-xs text-muted-foreground">2026-07-{20 - i} · 通勤</p>
                     </div>
-                    <Clock className="h-4 w-4 text-muted-foreground/50" />
-                  </div>
+                    <Clock className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                  </Button>
                 ))}
               </div>
             </ScrollArea>
@@ -771,7 +886,31 @@ export default function AIStylingPage() {
           </SheetContent>
         </Sheet>
 
-        {/* V1.3: Unsaved changes dialog when leaving canvas */}
+        {/* More Menu Sheet */}
+        <Sheet open={showMoreMenu} onOpenChange={setShowMoreMenu}>
+          <SheetContent className="sm:max-w-sm">
+            <SheetHeader>
+              <SheetTitle>更多操作</SheetTitle>
+              <SheetDescription>对当前搭配进行更多操作</SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-2">
+              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
+                <RefreshCw className="h-4 w-4 mr-3" />
+                重新生成
+              </Button>
+              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
+                <ArrowRightLeft className="h-4 w-4 mr-3" />
+                复制方案
+              </Button>
+              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
+                <Send className="h-4 w-4 mr-3" />
+                分享图片
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Unsaved changes dialog */}
         <Sheet open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
           <SheetContent className="sm:max-w-sm">
             <SheetHeader>
@@ -783,7 +922,7 @@ export default function AIStylingPage() {
                 className="w-full h-11 bg-primary hover:bg-primary/90"
                 onClick={() => {
                   setShowUnsavedDialog(false);
-                  handleCanvasComplete();
+                  handleEditingComplete();
                 }}
               >
                 保存草稿
@@ -793,7 +932,7 @@ export default function AIStylingPage() {
                 className="w-full h-11"
                 onClick={() => {
                   setShowUnsavedDialog(false);
-                  setPageState('input');
+                  setPageState('empty');
                 }}
               >
                 不保存

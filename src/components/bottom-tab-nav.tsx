@@ -7,7 +7,7 @@ import { Home, Shirt, Sparkles, User } from 'lucide-react';
 const tabs = [
   { href: '/', label: '首页', icon: Home },
   { href: '/wardrobe', label: '衣橱', icon: Shirt },
-  { href: '/ai-styling', label: 'AI 搭配', icon: Sparkles },
+  { href: '/ai-styling', label: '搭配', icon: Sparkles },
   { href: '/profile', label: '我的', icon: User },
 ];
 

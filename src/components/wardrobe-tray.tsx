@@ -70,12 +70,13 @@ export function WardrobeTray({
 
   if (!expanded) {
     return (
-      <button
+      <Button
+        variant="ghost"
         onClick={onToggle}
         className={cn(
-          "w-full py-3 px-4 flex items-center justify-center gap-2",
-          "bg-white border-t border-neutral-200",
-          "text-sm text-neutral-600 hover:text-neutral-900 transition-colors",
+          "w-full h-11 flex items-center justify-center gap-2",
+          "border-t border-neutral-200",
+          "text-sm text-neutral-600 hover:text-neutral-900",
           className
         )}
       >
@@ -89,7 +90,7 @@ export function WardrobeTray({
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
         </svg>
-      </button>
+      </Button>
     )
   }
 
@@ -117,12 +118,14 @@ export function WardrobeTray({
               添加所选 ({selectedItems.length})
             </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onToggle}
-            className="p-1 rounded hover:bg-neutral-100 transition-colors"
+            className="w-7 h-7"
           >
             <X className="w-4 h-4 text-neutral-500" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -143,18 +146,18 @@ export function WardrobeTray({
       <ScrollArea className="w-full whitespace-nowrap border-b border-neutral-100">
         <div className="flex gap-1.5 px-4 py-2">
           {CATEGORIES.map((cat) => (
-            <button
+            <Button
               key={cat}
+              variant={activeCategory === cat ? "secondary" : "outline"}
+              size="sm"
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-                activeCategory === cat
-                  ? "bg-brand-100 text-brand-700"
-                  : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"
+                "h-7 px-3 rounded-full text-xs whitespace-nowrap",
+                activeCategory === cat && "bg-brand-100 text-brand-700 hover:bg-brand-100/80"
               )}
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
         <ScrollBar orientation="horizontal" className="h-0" />

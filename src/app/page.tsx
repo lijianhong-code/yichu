@@ -94,11 +94,11 @@ export default function HomePage() {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted/80 border border-border/30 transition-all">
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted/80 border-border/30 transition-all h-auto">
                   <ThermometerSun className="h-3.5 w-3.5 text-accent-foreground" />
                   <span className="text-xs font-medium text-foreground">{weatherContext.tempRange}</span>
                   <span className="text-xs text-muted-foreground">{weatherContext.condition}</span>
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{weatherContext.city} · 湿度 {weatherContext.humidity}% · UV {weatherContext.uvIndex}</p>
@@ -185,30 +185,36 @@ export default function HomePage() {
               </div>
 
               {/* Why button */}
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowWhy(true)}
-                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors h-auto px-1 py-0.5"
               >
                 <Info className="h-3 w-3" />
                 为什么推荐这套？
-              </button>
+              </Button>
             </div>
 
             {/* Navigation arrows */}
             {todayAlternatives.length > 1 && (
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handlePrevAlt}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 hover:bg-background transition-colors shadow-sm"
                 >
                   <ChevronLeft className="h-4 w-4 text-foreground" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleNextAlt}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 hover:bg-background transition-colors shadow-sm"
                 >
                   <ChevronRight className="h-4 w-4 text-foreground" />
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -216,12 +222,14 @@ export default function HomePage() {
           {/* Alternative indicators */}
           <div className="flex items-center justify-center gap-1.5 mt-3">
             {todayAlternatives.map((_, index) => (
-              <button
+              <Button
                 key={index}
+                variant="ghost"
+                size="icon"
                 onClick={() => setCurrentAltIndex(index)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-full transition-all duration-300 p-0 ${
                   index === currentAltIndex
-                    ? 'w-6 bg-primary'
+                    ? 'w-6 bg-primary hover:bg-primary/80'
                     : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
                 }`}
               />

@@ -18,7 +18,7 @@ src/
 ├── app/
 │   ├── page.tsx              # 首页 - 今日穿搭推荐
 │   ├── wardrobe/page.tsx     # 衣橱页 - 单品/穿搭管理
-│   ├── ai-styling/page.tsx   # AI搭配页 - 需求输入与结果
+│   ├── ai-styling/page.tsx   # 搭配页 - 常驻搭配区+情境化操作
 │   ├── profile/page.tsx      # 我的页面 - 偏好与洞察
 │   ├── layout.tsx            # 全局布局 + 底部Tab导航
 │   └── globals.css           # 设计Token + 全局样式
