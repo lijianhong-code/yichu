@@ -82,25 +82,25 @@ export default function HomePage() {
     <TooltipProvider>
       <div className="min-h-screen bg-background pb-24">
         {/* Header with weather context */}
-        <header className="sticky top-0 z-10 glass-surface border-b border-border/30">
-          <div className="px-4 py-3 flex items-center justify-between">
+        <header className="sticky top-0 z-10 glass-surface border-b border-border/20 backdrop-blur-xl">
+          <div className="px-5 py-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">
-                下午好，小明
+              <p className="text-xs text-muted-foreground/70 font-medium tracking-wide uppercase">
+                下午好
               </p>
-              <p className="text-lg font-semibold text-foreground tracking-tight">
+              <h1 className="text-xl font-semibold text-foreground tracking-tight mt-0.5">
                 今天穿什么？
-              </p>
+              </h1>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted/80 border-border/30 transition-all h-auto">
+                <Button variant="outline" size="sm" className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted/30 hover:bg-muted/60 border-border/30 transition-all h-auto shadow-sm">
                   <ThermometerSun className="h-3.5 w-3.5 text-accent-foreground" />
-                  <span className="text-xs font-medium text-foreground">{weatherContext.tempRange}</span>
-                  <span className="text-xs text-muted-foreground">{weatherContext.condition}</span>
+                  <span className="text-xs font-semibold text-foreground">{weatherContext.tempRange}</span>
+                  <span className="text-xs text-muted-foreground/80">{weatherContext.condition}</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom" className="text-xs">
                 <p>{weatherContext.city} · 湿度 {weatherContext.humidity}% · UV {weatherContext.uvIndex}</p>
               </TooltipContent>
             </Tooltip>
@@ -108,31 +108,31 @@ export default function HomePage() {
         </header>
 
         {/* Quick need input */}
-        <section className="px-4 pt-4 pb-2">
+        <section className="px-5 pt-5 pb-3">
           <div className="relative">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="今天有什么安排？"
-              className="pr-12 h-11 bg-muted/30 border-border/40 rounded-lg text-sm placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:bg-background transition-all"
+              className="pr-12 h-12 bg-muted/20 border-border/30 rounded-xl text-sm placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-primary/15 focus-visible:bg-background/80 transition-all shadow-sm"
             />
             <Button
               size="icon"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all"
               onClick={() => inputValue && handleScenarioClick(inputValue)}
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-3.5 w-3.5" />
             </Button>
           </div>
           {/* Quick scenario chips */}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex gap-2 mt-3.5 overflow-x-auto pb-1 scrollbar-hide">
             {quickScenarios.map((scenario) => (
               <Button
                 key={scenario.label}
                 variant="outline"
                 size="sm"
                 onClick={() => handleScenarioClick(scenario.label)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted border-border/40 text-xs font-medium text-foreground transition-all hover:border-primary/20 whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-background/80 hover:bg-muted/50 border-border/30 text-xs font-medium text-foreground transition-all hover:border-primary/20 hover:shadow-sm whitespace-nowrap"
               >
                 {iconMap[scenario.icon]}
                 {scenario.label}
@@ -142,28 +142,28 @@ export default function HomePage() {
         </section>
 
         {/* Today's main outfit - the hero section */}
-        <section className="px-4 pt-4">
+        <section className="px-5 pt-5">
           {/* Outfit stage area */}
-          <div className="relative rounded-xl outfit-stage overflow-hidden noise-texture">
+          <div className="relative rounded-2xl outfit-stage overflow-hidden noise-texture shadow-elevated border border-border/20">
             {/* Outfit items display */}
-            <div className="px-4 pt-6 pb-4">
-              <div className="flex items-center justify-center gap-3 flex-wrap">
+            <div className="px-5 pt-7 pb-5">
+              <div className="flex items-center justify-center gap-3.5 flex-wrap">
                 {currentOutfit.items.slice(0, 4).map((item, index) => (
                   <button
                     key={item.id}
                     onClick={() => handleItemSelect(item)}
-                    className="group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background border border-border/20 overflow-hidden transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:border-primary/20 active:scale-[0.98] card-interactive"
+                    className="group relative w-[72px] h-[88px] sm:w-[88px] sm:h-[104px] rounded-xl bg-background border border-border/20 overflow-hidden transition-all duration-300 hover:scale-[1.04] hover:shadow-xl hover:border-primary/25 active:scale-[0.97] card-interactive"
                   >
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     {/* Item label */}
-                    <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1.5 bg-gradient-to-t from-black/50 via-black/20 to-transparent">
-                      <p className="text-[10px] text-white/90 truncate font-medium">{item.subCategory}</p>
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-2 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
+                      <p className="text-[10px] text-white/95 truncate font-medium">{item.subCategory}</p>
                     </div>
                   </button>
                 ))}
@@ -171,15 +171,15 @@ export default function HomePage() {
             </div>
 
             {/* Outfit info */}
-            <div className="px-4 pb-4">
+            <div className="px-5 pb-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-foreground">{currentOutfit.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                  <h2 className="text-[15px] font-semibold text-foreground tracking-tight">{currentOutfit.name}</h2>
+                  <p className="text-[12px] text-muted-foreground mt-1 line-clamp-1 leading-relaxed">
                     {currentOutfit.explanation}
                   </p>
                 </div>
-                <Badge variant="secondary" className="text-[10px] font-normal bg-background/60 border-border/30">
+                <Badge variant="secondary" className="text-[10px] font-medium bg-background/70 border-border/30 backdrop-blur-sm px-2.5 py-1">
                   {currentOutfit.occasion}
                 </Badge>
               </div>
@@ -189,9 +189,9 @@ export default function HomePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowWhy(true)}
-                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors h-auto px-1 py-0.5"
+                className="flex items-center gap-1.5 mt-2.5 text-[12px] text-muted-foreground hover:text-primary transition-colors h-auto px-1.5 py-1"
               >
-                <Info className="h-3 w-3" />
+                <Info className="h-3.5 w-3.5" />
                 为什么推荐这套？
               </Button>
             </div>
@@ -203,7 +203,7 @@ export default function HomePage() {
                   variant="ghost"
                   size="icon"
                   onClick={handlePrevAlt}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 hover:bg-background transition-colors shadow-sm"
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full glass-surface-strong border border-border/30 hover:bg-background transition-all shadow-md hover:shadow-lg"
                 >
                   <ChevronLeft className="h-4 w-4 text-foreground" />
                 </Button>
@@ -211,7 +211,7 @@ export default function HomePage() {
                   variant="ghost"
                   size="icon"
                   onClick={handleNextAlt}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass-surface border border-border/30 hover:bg-background transition-colors shadow-sm"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full glass-surface-strong border border-border/30 hover:bg-background transition-all shadow-md hover:shadow-lg"
                 >
                   <ChevronRight className="h-4 w-4 text-foreground" />
                 </Button>
@@ -220,7 +220,7 @@ export default function HomePage() {
           </div>
 
           {/* Alternative indicators */}
-          <div className="flex items-center justify-center gap-1.5 mt-3">
+          <div className="flex items-center justify-center gap-2 mt-4">
             {todayAlternatives.map((_, index) => (
               <Button
                 key={index}
@@ -229,8 +229,8 @@ export default function HomePage() {
                 onClick={() => setCurrentAltIndex(index)}
                 className={`h-1.5 rounded-full transition-all duration-300 p-0 ${
                   index === currentAltIndex
-                    ? 'w-6 bg-primary hover:bg-primary/80'
-                    : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
+                    ? 'w-7 bg-primary hover:bg-primary/80'
+                    : 'w-1.5 bg-muted-foreground/25 hover:bg-muted-foreground/40'
                 }`}
               />
             ))}
@@ -238,16 +238,16 @@ export default function HomePage() {
         </section>
 
         {/* Decision actions */}
-        <section className="px-4 pt-5 flex gap-3">
+        <section className="px-5 pt-6 flex gap-3">
           <Button
-            className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm btn-primary-glow transition-all"
+            className="flex-1 h-[52px] rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-[14px] btn-primary-glow transition-all shadow-lg hover:shadow-xl"
           >
             <Check className="h-4 w-4 mr-2" />
             今天穿这套
           </Button>
           <Button
             variant="outline"
-            className="flex-1 h-12 rounded-lg border-border/60 text-foreground font-medium text-sm hover:bg-muted/60 transition-all"
+            className="flex-1 h-[52px] rounded-xl border-border/50 text-foreground font-medium text-[14px] hover:bg-muted/60 transition-all shadow-sm hover:shadow-md"
             onClick={handleNextAlt}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -256,17 +256,17 @@ export default function HomePage() {
         </section>
 
         {/* Secondary entries */}
-        <section className="px-4 pt-5 flex gap-3">
+        <section className="px-5 pt-4 flex gap-3">
           <Button
             variant="outline"
-            className="flex-1 h-11 rounded-lg bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all"
+            className="flex-1 h-11 rounded-xl bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all shadow-sm"
           >
             <Shirt className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span className="text-xs font-medium">添加衣物</span>
+            <span className="text-[13px] font-medium">添加衣物</span>
           </Button>
           <Button
             variant="outline"
-            className="flex-1 h-11 rounded-lg bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all"
+            className="flex-1 h-11 rounded-xl bg-muted/20 hover:bg-muted/50 border-border/30 text-foreground transition-all shadow-sm"
           >
             <ImageIcon className="h-4 w-4 mr-2 text-muted-foreground" />
             <span className="text-xs font-medium">参考图搭配</span>
