@@ -452,10 +452,12 @@ export default function AIStylingPage() {
                           }`}
                         >
                           <div className="flex -space-x-1">
-                            {(candidate.outfit.items || []).slice(0, 3).map((item) => (
-                              <div key={item.id} className="h-8 w-8 rounded-full bg-muted overflow-hidden border border-background">
+                            {(candidate.outfit.items || []).slice(0, 3).map((item, idx) => (
+                              item ? (
+                              <div key={item.id || idx} className="h-8 w-8 rounded-full bg-muted overflow-hidden border border-background">
                                 <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
                               </div>
+                              ) : null
                             ))}
                           </div>
                           <span className={`text-xs font-medium ${
