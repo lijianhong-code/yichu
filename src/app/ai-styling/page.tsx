@@ -391,38 +391,46 @@ export default function AIStylingPage() {
               </div>
             )}
 
-            {/* LOADING STATE - skeleton in outfit area */}
+            {/* LOADING STATE - progress in outfit area */}
             {pageState === 'loading' && (
               <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8 px-6">
-                {/* Skeleton items */}
-                <div className="flex items-center justify-center gap-3 flex-wrap mb-6">
+                {/* Skeleton outfit items */}
+                <div className="flex items-center justify-center gap-3 flex-wrap mb-8">
                   {[1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg" />
+                    <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-muted/60" />
                   ))}
                 </div>
-                {/* Progress */}
-                <div className="w-full max-w-xs space-y-3">
-                  <Progress value={progress} className="h-1" />
-                  <div className="text-center space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {loadingStages[currentStage]?.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      请稍候，正在为你寻找最佳搭配
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    {loadingStages.map((_, index) => (
-                      <div
-                        key={index}
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
-                          index <= currentStage
-                            ? 'w-4 bg-primary'
-                            : 'w-1.5 bg-muted-foreground/20'
-                        }`}
-                      />
+                {/* Stage progress */}
+                <div className="w-full max-w-[280px] space-y-4">
+                  {/* Stage indicators */}
+                  <div className="space-y-2.5">
+                    {loadingStages.map((stage, index) => (
+                      <div key={stage.label} className="flex items-center gap-3">
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
+                          index < currentStage
+                            ? 'bg-primary text-primary-foreground'
+                            : index === currentStage
+                            ? 'bg-primary/20 text-primary'
+                            : 'bg-muted text-muted-foreground/40'
+                        }`}>
+                          {index < currentStage ? (
+                            <Check className="h-3 w-3" />
+                          ) : index === currentStage ? (
+                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                          ) : (
+                            <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                          )}
+                        </div>
+                        <span className={`text-xs transition-all duration-300 ${
+                          index <= currentStage ? 'text-foreground font-medium' : 'text-muted-foreground/50'
+                        }`}>
+                          {stage.label}
+                        </span>
+                      </div>
                     ))}
                   </div>
+                  {/* Progress bar */}
+                  <Progress value={progress} className="h-1.5 rounded-full" />
                 </div>
               </div>
             )}
@@ -514,19 +522,42 @@ export default function AIStylingPage() {
         {/* EMPTY STATE actions */}
         {pageState === 'empty' && (
           <div className="px-4 pt-5 space-y-3">
-            {/* AI input */}
-            <div className="relative">
+            {/* AI input area - OpenAI style */}
+            <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                className="min-h-[80px] pr-12 bg-muted/20 border-border/40 rounded-lg text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+                className="min-h-[80px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
               />
-              <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                <div className="h-1 w-1 rounded-full bg-ai-400" />
+              {/* Action bar below input - OpenAI style */}
+              <div className="flex items-center justify-between px-3 pb-2">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1.5"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    参考图
+                  </Button>
+                  <div className="h-3 w-px bg-border/40" />
+                  {quickScenarios.slice(0, 3).map((scenario) => (
+                    <Button
+                      key={scenario.label}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setInputValue(scenario.label)}
+                      className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1"
+                    >
+                      {iconMap[scenario.icon]}
+                      {scenario.label}
+                    </Button>
+                  ))}
+                </div>
                 <Button
                   size="icon"
-                  className="h-8 w-8 rounded-md bg-primary hover:bg-primary/90 shadow-sm"
+                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-sm"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
@@ -535,55 +566,25 @@ export default function AIStylingPage() {
               </div>
             </div>
 
-            {/* Quick scenarios */}
-            <div className="flex flex-wrap gap-2">
-              {quickScenarios.map((scenario) => (
-                <Button
-                  key={scenario.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setInputValue(scenario.label)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 hover:bg-muted/50 border-border/30 text-xs font-medium text-foreground transition-all hover:border-primary/20"
-                >
-                  {iconMap[scenario.icon]}
-                  {scenario.label}
-                </Button>
-              ))}
+            {/* AI 帮我搭 & 手动搭一套 - side by side */}
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
+                onClick={handleGenerate}
+                disabled={!inputValue.trim()}
+              >
+                <Sparkles className="h-4 w-4 mr-1.5" />
+                AI 帮我搭
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
+                onClick={() => handleEnterEditing('manual')}
+              >
+                <Pencil className="h-4 w-4 mr-1.5" />
+                手动搭一套
+              </Button>
             </div>
-
-            {/* Primary: AI Generate */}
-            <Button
-              className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
-              onClick={handleGenerate}
-              disabled={!inputValue.trim()}
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              AI 帮我搭
-            </Button>
-
-            {/* Secondary: Manual outfit */}
-            <Button
-              variant="outline"
-              className="w-full h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-              onClick={() => handleEnterEditing('manual')}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              手动搭一套
-            </Button>
-
-            {/* Reference image entry */}
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-4 justify-start gap-3 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
-            >
-              <div className="h-10 w-10 rounded-full bg-ai-50/80 flex items-center justify-center ai-glow">
-                <ImageIcon className="h-5 w-5 text-ai-600" />
-              </div>
-              <div className="text-left flex-1">
-                <p className="text-sm font-medium text-foreground">用参考图搭配</p>
-                <p className="text-xs text-muted-foreground">上传一张图片，AI 用你的衣物模仿风格</p>
-              </div>
-            </Button>
           </div>
         )}
 
