@@ -12,13 +12,7 @@ import {
   Unlock,
   History,
   MoreHorizontal,
-  ThermometerSun,
   Shirt,
-  Clock,
-  Briefcase,
-  Wine,
-  Sun,
-  ClipboardList,
   ImageIcon,
   Plus,
   Pencil,
@@ -26,14 +20,18 @@ import {
   X,
   Undo2,
   Redo2,
-  MoveHorizontal,
   RotateCcw,
   BookmarkPlus,
+  Trash2,
+  MoveHorizontal,
+  Briefcase,
+  Wine,
+  Sun,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -57,14 +55,14 @@ import { todayOutfit, wardrobeItems, quickScenarios } from '@/lib/mock-data';
 import type { WardrobeItem } from '@/lib/mock-data';
 
 const iconMap: Record<string, React.ReactNode> = {
-  Briefcase: <Briefcase className="h-4 w-4" />,
-  Wine: <Wine className="h-4 w-4" />,
-  Sun: <Sun className="h-4 w-4" />,
-  ClipboardList: <ClipboardList className="h-4 w-4" />,
+  Briefcase: <Briefcase className="h-3.5 w-3.5" />,
+  Wine: <Wine className="h-3.5 w-3.5" />,
+  Sun: <Sun className="h-3.5 w-3.5" />,
+  ClipboardList: <ClipboardList className="h-3.5 w-3.5" />,
 };
 
-// V1.4: 4 states sharing the same outfit area
-type PageState = 'empty' | 'loading' | 'result' | 'editing';
+// V1.4: Page states
+type PageState = 'empty' | 'loading' | 'preview' | 'editing';
 
 const loadingStages = [
   { label: '正在理解场合', duration: 800 },
@@ -107,61 +105,46 @@ export default function AIStylingPage() {
   const [inputValue, setInputValue] = useState('');
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
-  const [lockedItems, setLockedItems] = useState<Set<string>>(new Set());
-  const [showReplacement, setShowReplacement] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<CanvasItem | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [showWhy, setShowWhy] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [showWhy, setShowWhy] = useState(false);
 
-  // V1.4: Candidate switching
-  const [activeCandidateIndex, setActiveCandidateIndex] = useState(0);
-  const [hasViewedAll, setHasViewedAll] = useState(false);
-  const [candidates, setCandidates] = useState(mockCandidates);
+  // Candidate state
+  const [candidates] = useState(mockCandidates);
+  const [previewCandidateIndex, setPreviewCandidateIndex] = useState(0);
 
   // Canvas / editing state
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
-  const [canvasSource, setCanvasSource] = useState<'ai' | 'manual' | 'edit'>('ai');
   const [trayOpen, setTrayOpen] = useState(false);
-  const [selectedTrayItems, setSelectedTrayItems] = useState<WardrobeItem[]>([]);
   const [editHistory, setEditHistory] = useState<{ items: CanvasItem[] }[]>([]);
   const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
 
-  const currentOutfit = candidates[activeCandidateIndex]?.outfit ?? todayOutfit;
-  const outfitItems = currentOutfit?.items ?? [];
+  const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? todayOutfit;
 
   // Initialize canvas from outfit
-  const initCanvasFromOutfit = useCallback((source: 'ai' | 'manual' | 'edit', outfitData?: typeof todayOutfit) => {
-    setCanvasSource(source);
-    const data = outfitData ?? currentOutfit;
-    if (source === 'manual') {
-      setCanvasItems([]);
-      setTrayOpen(true);
-    } else {
-      const items: CanvasItem[] = (data?.items ?? []).map((wardrobeItem, index) => {
-        const totalItems = (data?.items ?? []).length;
-        const cols = Math.min(3, totalItems);
-        const row = Math.floor(index / cols);
-        const col = index % cols;
-        return {
-          id: `canvas-${wardrobeItem.id}`,
-          itemId: wardrobeItem.id,
-          item: wardrobeItem,
-          x: 20 + col * 30,
-          y: 15 + row * 35,
-          scale: 1,
-          locked: false,
-          zIndex: index,
-        };
-      });
-      setCanvasItems(items);
-      setTrayOpen(false);
-    }
-    setEditHistory([{ items: canvasItems }]);
+  const initCanvasFromOutfit = useCallback((outfit: typeof todayOutfit) => {
+    const items: CanvasItem[] = outfit.items.map((wardrobeItem, index) => {
+      const totalItems = outfit.items.length;
+      const cols = Math.min(3, totalItems);
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      return {
+        id: `canvas-${wardrobeItem.id}`,
+        itemId: wardrobeItem.id,
+        item: wardrobeItem,
+        x: 20 + col * 30,
+        y: 15 + row * 35,
+        scale: 1,
+        locked: false,
+        zIndex: index,
+      };
+    });
+    setCanvasItems(items);
+    setEditHistory([{ items }]);
     setEditHistoryIndex(0);
-  }, [currentOutfit, canvasItems]);
+    setSelectedItem(null);
+  }, []);
 
   // Push edit history
   const pushEditHistory = useCallback((newItems: CanvasItem[]) => {
@@ -195,8 +178,7 @@ export default function AIStylingPage() {
     setPageState('loading');
     setCurrentStage(0);
     setProgress(0);
-    setHasViewedAll(false);
-    setActiveCandidateIndex(0);
+    setPreviewCandidateIndex(0);
   };
 
   // Loading animation
@@ -216,7 +198,7 @@ export default function AIStylingPage() {
 
     const completeTimer = setTimeout(() => {
       setProgress(100);
-      setTimeout(() => setPageState('result'), 300);
+      setTimeout(() => setPageState('preview'), 300);
     }, totalDuration);
 
     return () => {
@@ -225,51 +207,70 @@ export default function AIStylingPage() {
     };
   }, [pageState]);
 
-  // Track viewing all candidates
-  useEffect(() => {
-    if (pageState === 'result' && activeCandidateIndex >= 2) {
-      setHasViewedAll(true);
-    }
-  }, [activeCandidateIndex, pageState]);
-
-  const handleItemSelect = (item: WardrobeItem) => {
-    if (pageState === 'editing') return;
-    setSelectedItem(item);
-    setShowReplacement(true);
-  };
-
-  const toggleLock = (itemId: string) => {
-    setLockedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
-  };
-
-  const handleBack = () => {
-    if (pageState === 'editing') {
-      setShowUnsavedDialog(true);
-      return;
-    }
-    setPageState('empty');
-    setCurrentStage(0);
-    setProgress(0);
-  };
-
-  const handleEnterEditing = (source: 'ai' | 'manual' | 'edit') => {
-    initCanvasFromOutfit(source);
+  // Load candidate to canvas and enter editing
+  const handleLoadToCanvas = (index: number) => {
+    setPreviewCandidateIndex(index);
+    initCanvasFromOutfit(candidates[index].outfit);
     setPageState('editing');
-  };
-
-  const handleEditingComplete = () => {
-    setPageState('result');
     setTrayOpen(false);
   };
 
+  // Enter manual editing
+  const handleManualEdit = () => {
+    setCanvasItems([]);
+    setEditHistory([{ items: [] }]);
+    setEditHistoryIndex(0);
+    setSelectedItem(null);
+    setPageState('editing');
+    setTrayOpen(true);
+  };
+
+  // Exit editing
+  const handleExitEditing = () => {
+    setPageState('preview');
+    setTrayOpen(false);
+    setSelectedItem(null);
+  };
+
+  // Add item from tray
+  const handleAddFromTray = (item: WardrobeItem) => {
+    if (canvasItems.some((ci) => ci.item.id === item.id)) return;
+    const newItem: CanvasItem = {
+      id: `canvas-${item.id}`,
+      itemId: item.id,
+      item: item,
+      x: 35,
+      y: 35,
+      scale: 1,
+      locked: false,
+      zIndex: canvasItems.length,
+    };
+    const newItems = [...canvasItems, newItem];
+    setCanvasItems(newItems);
+    pushEditHistory(newItems);
+  };
+
+  // Remove item from canvas
+  const handleRemoveFromCanvas = (itemId: string) => {
+    const newItems = canvasItems.filter((ci) => ci.itemId !== itemId);
+    setCanvasItems(newItems);
+    pushEditHistory(newItems);
+    setSelectedItem(null);
+  };
+
+  // Toggle lock on item
+  const handleToggleLock = (itemId: string) => {
+    const newItems = canvasItems.map((ci) =>
+      ci.itemId === itemId ? { ...ci, locked: !ci.locked } : ci
+    );
+    setCanvasItems(newItems);
+    pushEditHistory(newItems);
+  };
+
+  // AI Complete missing slots
   const handleAIComplete = () => {
     const existingCategories = new Set(
-      canvasItems.map((ci) => wardrobeItems.find((w) => w.id === ci.itemId)?.category)
+      canvasItems.map((ci) => ci.item.category)
     );
     const missingCategories = ['bottoms', 'shoes'].filter((c) => !existingCategories.has(c));
 
@@ -293,28 +294,32 @@ export default function AIStylingPage() {
     pushEditHistory(newItems);
   };
 
-  const handleAddFromTray = (item: WardrobeItem) => {
-    if (canvasItems.some((ci) => ci.item.id === item.id)) return;
-    const newItem: CanvasItem = {
-      id: `canvas-${item.id}`,
-      itemId: item.id,
-      item: item,
-      x: 35,
-      y: 35,
-      scale: 1,
-      locked: false,
-      zIndex: canvasItems.length,
-    };
-    const newItems = [...canvasItems, newItem];
+  // Restore layout
+  const handleRestoreLayout = () => {
+    const newItems = canvasItems.map((ci, index) => {
+      const totalItems = canvasItems.length;
+      const cols = Math.min(3, totalItems);
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      return {
+        ...ci,
+        x: 20 + col * 30,
+        y: 15 + row * 35,
+      };
+    });
     setCanvasItems(newItems);
     pushEditHistory(newItems);
   };
 
-  // Candidate switching
-  const handleCandidateSelect = (index: number) => {
-    if (index === activeCandidateIndex) return;
-    setActiveCandidateIndex(index);
-    setSelectedItem(null);
+  // Restore size
+  const handleRestoreSize = () => {
+    if (!selectedItem) return;
+    const newItems = canvasItems.map((ci) =>
+      ci.id === selectedItem.id ? { ...ci, scale: 1 } : ci
+    );
+    setCanvasItems(newItems);
+    pushEditHistory(newItems);
+    setSelectedItem({ ...selectedItem, scale: 1 });
   };
 
   return (
@@ -324,20 +329,18 @@ export default function AIStylingPage() {
         <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {(pageState === 'result' || pageState === 'editing') && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
+              {(pageState === 'preview' || pageState === 'editing') && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPageState('empty')}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               )}
               <div>
                 <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  {pageState === 'editing'
-                    ? (canvasSource === 'manual' ? '手动搭配' : '编辑搭配')
-                    : '搭配'}
+                  {pageState === 'editing' ? '编辑搭配' : '搭配'}
                 </h1>
                 {pageState !== 'empty' && (
                   <p className="text-[10px] text-muted-foreground">
-                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : currentOutfit.occasion}
+                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : previewOutfit.occasion}
                   </p>
                 )}
               </div>
@@ -376,7 +379,7 @@ export default function AIStylingPage() {
           </div>
         </header>
 
-        {/* ==================== PERMANENT OUTFIT AREA (48-56% height) ==================== */}
+        {/* ==================== PERMANENT OUTFIT AREA ==================== */}
         <div className="px-4 pt-4">
           <div className="rounded-xl outfit-stage noise-texture relative overflow-hidden" style={{ minHeight: '48vh', maxHeight: '56vh' }}>
             
@@ -391,18 +394,15 @@ export default function AIStylingPage() {
               </div>
             )}
 
-            {/* LOADING STATE - progress in outfit area */}
+            {/* LOADING STATE */}
             {pageState === 'loading' && (
               <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8 px-6">
-                {/* Skeleton outfit items */}
                 <div className="flex items-center justify-center gap-3 flex-wrap mb-8">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-muted/60" />
                   ))}
                 </div>
-                {/* Stage progress */}
                 <div className="w-full max-w-[280px] space-y-4">
-                  {/* Stage indicators */}
                   <div className="space-y-2.5">
                     {loadingStages.map((stage, index) => (
                       <div key={stage.label} className="flex items-center gap-3">
@@ -429,70 +429,43 @@ export default function AIStylingPage() {
                       </div>
                     ))}
                   </div>
-                  {/* Progress bar */}
                   <Progress value={progress} className="h-1.5 rounded-full" />
                 </div>
               </div>
             )}
 
-            {/* RESULT STATE - outfit display */}
-            {pageState === 'result' && (
+            {/* PREVIEW STATE - 3 candidate thumbnails */}
+            {pageState === 'preview' && (
               <div className="flex flex-col h-full min-h-[48vh]">
-                <div className="flex-1 flex items-center justify-center gap-3 flex-wrap p-4">
-                  {outfitItems.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemSelect(item)}
-                      className={`group relative w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-background overflow-hidden transition-all duration-200 hover:shadow-lg card-interactive ${
-                        selectedItem?.id === item.id
-                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                          : 'border border-border/20'
-                      }`}
-                    >
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                      {lockedItems.has(item.id) && (
-                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center">
-                          <Lock className="h-3 w-3 text-primary-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1.5 bg-gradient-to-t from-black/50 via-black/20 to-transparent">
-                        <p className="text-[10px] text-white/90 truncate font-medium">{item.subCategory}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Candidate thumbnails at bottom of outfit area */}
-                <div className="px-4 pb-3">
-                  <div className="flex items-center gap-2">
-                    {candidates.map((candidate, index) => (
-                      <button
-                        key={candidate.id}
-                        onClick={() => handleCandidateSelect(index)}
-                        className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
-                          index === activeCandidateIndex
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                            : 'border-border/30 bg-background/60 hover:border-border/60'
-                        }`}
-                      >
-                        <div className="flex -space-x-1">
-                          {candidate.outfit.items.slice(0, 2).map((item) => (
-                            <div key={item.id} className="h-6 w-6 rounded-full bg-muted overflow-hidden border border-background">
-                              <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                        <span className={`text-xs font-medium truncate ${
-                          index === activeCandidateIndex ? 'text-primary' : 'text-muted-foreground'
-                        }`}>
-                          {candidate.label}
-                        </span>
-                      </button>
-                    ))}
+                <div className="flex-1 flex items-center justify-center p-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-4">点击方案加载到画布进行编辑</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(candidates || []).map((candidate, index) => (
+                        <button
+                          key={candidate.id}
+                          onClick={() => handleLoadToCanvas(index)}
+                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 hover:shadow-md card-interactive ${
+                            index === previewCandidateIndex
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                              : 'border-border/30 bg-background/60'
+                          }`}
+                        >
+                          <div className="flex -space-x-1">
+                            {(candidate.outfit.items || []).slice(0, 3).map((item) => (
+                              <div key={item.id} className="h-8 w-8 rounded-full bg-muted overflow-hidden border border-background">
+                                <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                          <span className={`text-xs font-medium ${
+                            index === previewCandidateIndex ? 'text-primary' : 'text-muted-foreground'
+                          }`}>
+                            {candidate.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -507,11 +480,7 @@ export default function AIStylingPage() {
                   setCanvasItems(items);
                   pushEditHistory(items);
                 }}
-                onAIComplete={(lockedIds) => {
-                  console.log('AI complete locked:', lockedIds);
-                }}
                 onAddFromWardrobe={() => setTrayOpen(true)}
-                onReplaceItem={() => {}}
               />
             )}
           </div>
@@ -530,7 +499,7 @@ export default function AIStylingPage() {
                 placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
                 className="min-h-[80px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
               />
-              {/* Action bar below input - OpenAI style */}
+              {/* Action bar below input */}
               <div className="flex items-center justify-between px-3 pb-2">
                 <div className="flex items-center gap-1 flex-wrap">
                   <Button
@@ -542,7 +511,7 @@ export default function AIStylingPage() {
                     参考图
                   </Button>
                   <div className="h-3 w-px bg-border/40" />
-                  {quickScenarios.slice(0, 3).map((scenario) => (
+                  {(quickScenarios || []).slice(0, 3).map((scenario) => (
                     <Button
                       key={scenario.label}
                       variant="ghost"
@@ -550,7 +519,7 @@ export default function AIStylingPage() {
                       onClick={() => setInputValue(scenario.label)}
                       className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1"
                     >
-                      {iconMap[scenario.icon]}
+                      {iconMap[scenario.icon] || null}
                       {scenario.label}
                     </Button>
                   ))}
@@ -579,7 +548,7 @@ export default function AIStylingPage() {
               <Button
                 variant="outline"
                 className="flex-1 h-11 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-                onClick={() => handleEnterEditing('manual')}
+                onClick={handleManualEdit}
               >
                 <Pencil className="h-4 w-4 mr-1.5" />
                 手动搭一套
@@ -588,13 +557,13 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* RESULT STATE actions */}
-        {pageState === 'result' && (
+        {/* PREVIEW STATE actions */}
+        {pageState === 'preview' && (
           <div className="px-4 pt-4 space-y-3">
             {/* Explanation */}
             <div className="flex items-start gap-2">
               <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-foreground leading-relaxed flex-1">{currentOutfit.explanation}</p>
+              <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
             </div>
             <button
               onClick={() => setShowWhy(true)}
@@ -611,77 +580,10 @@ export default function AIStylingPage() {
                 <Check className="h-4 w-4 mr-2" />
                 今天穿
               </Button>
-              {hasViewedAll ? (
-                <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={handleGenerate}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  重新生成
-                </Button>
-              ) : (
-                <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={() => {
-                  const next = (activeCandidateIndex + 1) % candidates.length;
-                  handleCandidateSelect(next);
-                }}>
-                  <ArrowRightLeft className="h-4 w-4 mr-2" />
-                  下一套
-                </Button>
-              )}
-            </div>
-
-            {/* Edit outfit */}
-            <Button
-              variant="outline"
-              className="w-full h-11 rounded-lg border-border/50 hover:bg-muted/30 text-sm"
-              onClick={() => handleEnterEditing('edit')}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              编辑搭配
-            </Button>
-
-            {/* Selected item actions */}
-            {selectedItem && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-9 rounded-lg text-xs"
-                  onClick={() => setShowReplacement(true)}
-                >
-                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
-                  替换
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-9 rounded-lg text-xs"
-                  onClick={() => toggleLock(selectedItem.id)}
-                >
-                  {lockedItems.has(selectedItem.id) ? (
-                    <>
-                      <Unlock className="h-3.5 w-3.5 mr-1.5" />
-                      取消保留
-                    </>
-                  ) : (
-                    <>
-                      <BookmarkPlus className="h-3.5 w-3.5 mr-1.5" />
-                      保留这件
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {/* Continue input */}
-            <div className="relative">
-              <Input
-                placeholder="继续调整，如：鞋子换成平底"
-                className="pr-20 h-10 bg-muted/30 border-border/50 rounded-lg text-sm"
-              />
-              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <div className="h-1 w-1 rounded-full bg-ai-400" />
-                <Button size="icon" className="h-7 w-7 rounded-md bg-primary">
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={handleGenerate}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                重新生成
+              </Button>
             </div>
           </div>
         )}
@@ -689,6 +591,70 @@ export default function AIStylingPage() {
         {/* EDITING STATE actions */}
         {pageState === 'editing' && (
           <div className="px-4 pt-3 space-y-3">
+            {/* Selected item toolbar */}
+            {selectedItem && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {selectedItem.item.subCategory}
+                </span>
+                <div className="h-4 w-px bg-border/40 shrink-0" />
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg text-xs shrink-0"
+                      onClick={() => handleToggleLock(selectedItem.itemId)}
+                    >
+                      {selectedItem.locked ? (
+                        <>
+                          <Unlock className="h-3.5 w-3.5 mr-1" />
+                          取消保留
+                        </>
+                      ) : (
+                        <>
+                          <BookmarkPlus className="h-3.5 w-3.5 mr-1" />
+                          保留
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{selectedItem.locked ? '取消保留，AI 可以替换' : '保留这件，AI 不会替换'}</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg text-xs shrink-0"
+                      onClick={handleRestoreSize}
+                    >
+                      <MoveHorizontal className="h-3.5 w-3.5 mr-1" />
+                      恢复大小
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>重置单品尺寸</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg text-xs shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveFromCanvas(selectedItem.itemId)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      移除
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>从搭配中移除（不删除衣橱单品）</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+
             {/* Canvas Toolbar */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <Tooltip>
@@ -729,34 +695,13 @@ export default function AIStylingPage() {
                         variant="outline"
                         size="sm"
                         className="h-9 rounded-lg text-xs shrink-0"
-                        onClick={() => {
-                          const event = new CustomEvent('canvas-restore-layout');
-                          window.dispatchEvent(event);
-                        }}
+                        onClick={handleRestoreLayout}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
                         恢复排版
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>恢复系统自动布局</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 rounded-lg text-xs shrink-0"
-                        onClick={() => {
-                          const event = new CustomEvent('canvas-restore-size');
-                          window.dispatchEvent(event);
-                        }}
-                      >
-                        <MoveHorizontal className="h-3.5 w-3.5 mr-1" />
-                        恢复大小
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>重置选中单品尺寸</TooltipContent>
                   </Tooltip>
                 </>
               )}
@@ -765,7 +710,7 @@ export default function AIStylingPage() {
             {/* Complete button */}
             <Button
               className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm"
-              onClick={handleEditingComplete}
+              onClick={handleExitEditing}
             >
               完成编辑
             </Button>
@@ -775,175 +720,86 @@ export default function AIStylingPage() {
               expanded={trayOpen}
               onToggle={() => setTrayOpen(!trayOpen)}
               existingItemIds={canvasItems.map((ci) => ci.item.id)}
-              selectedItems={selectedTrayItems}
-              onItemSelect={(item) => setSelectedTrayItems((prev) => [...prev, item])}
-              onItemDeselect={(item) => setSelectedTrayItems((prev) => prev.filter((i) => i.id !== item.id))}
-              onConfirmAdd={() => {
-                selectedTrayItems.forEach((item) => handleAddFromTray(item));
-                setSelectedTrayItems([]);
-                setTrayOpen(false);
-              }}
+              selectedItems={[]}
+              onItemSelect={(item) => handleAddFromTray(item)}
+              onItemDeselect={() => {}}
+              onConfirmAdd={() => setTrayOpen(false)}
             />
           </div>
         )}
 
         {/* ==================== SHEETS ==================== */}
 
-        {/* Replacement Drawer */}
-        <Sheet open={showReplacement} onOpenChange={setShowReplacement}>
+        {/* Why Sheet */}
+        <Sheet open={showWhy} onOpenChange={setShowWhy}>
           <SheetContent className="sm:max-w-lg">
             <SheetHeader>
-              <SheetTitle>替换 {selectedItem?.subCategory}</SheetTitle>
-              <SheetDescription>从衣橱中选择一个替代单品</SheetDescription>
+              <SheetTitle>推荐理由</SheetTitle>
+              <SheetDescription>AI 搭配的关键考量</SheetDescription>
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="py-4 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {['更正式', '更休闲', '换个颜色', '更保暖'].map((dir) => (
-                    <Button key={dir} variant="outline" size="sm" className="rounded-full text-xs">
-                      {dir}
-                    </Button>
-                  ))}
+              <div className="space-y-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Check className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">场合匹配</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">商务休闲风格，适合办公环境</p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {wardrobeItems
-                    .filter((item) => item.category === selectedItem?.category && item.id !== selectedItem?.id)
-                    .map((item) => (
-                      <Button
-                        key={item.id}
-                        variant="ghost"
-                        className="h-auto p-0 flex-col items-stretch overflow-hidden hover:bg-muted/50"
-                      >
-                        <div className="relative aspect-[3/4] bg-muted/30">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="p-1.5 w-full text-left">
-                          <p className="text-[10px] text-foreground truncate">{item.name}</p>
-                        </div>
-                      </Button>
-                    ))}
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Check className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">温度适宜</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">22-28°C，针织衫厚度适中</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-full bg-ai-50 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4 text-ai-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">色彩协调</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">米白 + 深蓝 + 棕色，经典配色</p>
+                  </div>
                 </div>
               </div>
             </ScrollArea>
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
-              <Button className="w-full h-11 bg-primary hover:bg-primary/90">
-                确认替换
-              </Button>
-            </div>
           </SheetContent>
         </Sheet>
 
         {/* History Sheet */}
         <Sheet open={showHistory} onOpenChange={setShowHistory}>
-          <SheetContent className="sm:max-w-md">
+          <SheetContent className="sm:max-w-lg">
             <SheetHeader>
               <SheetTitle>历史方案</SheetTitle>
-              <SheetDescription>你过去的搭配记录</SheetDescription>
+              <SheetDescription>查看之前的搭配记录</SheetDescription>
             </SheetHeader>
-            <ScrollArea className="h-[calc(100vh-160px)]">
-              <div className="py-4 space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <Button
-                    key={i}
-                    variant="ghost"
-                    className="w-full h-auto p-3 justify-start gap-3 hover:bg-muted/50"
-                  >
-                    <div className="h-12 w-12 rounded-md bg-muted/50 flex items-center justify-center shrink-0">
-                      <Shirt className="h-5 w-5 text-muted-foreground/50" />
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium text-foreground truncate">搭配方案 #{i}</p>
-                      <p className="text-xs text-muted-foreground">2026-07-{20 - i} · 通勤</p>
-                    </div>
-                    <Clock className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-                  </Button>
-                ))}
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="space-y-3 py-4">
+                <p className="text-sm text-muted-foreground text-center py-8">暂无历史方案</p>
               </div>
             </ScrollArea>
           </SheetContent>
         </Sheet>
 
-        {/* Why Sheet */}
-        <Sheet open={showWhy} onOpenChange={setShowWhy}>
-          <SheetContent className="sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>推荐理由</SheetTitle>
-              <SheetDescription>AI 为什么推荐这套搭配</SheetDescription>
-            </SheetHeader>
-            <div className="py-4 space-y-3">
-              <div className="p-3 rounded-lg bg-muted/40">
-                <p className="text-sm font-medium text-foreground mb-1">场合匹配</p>
-                <p className="text-xs text-muted-foreground">商务休闲风格，适合日常通勤和办公环境</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/40">
-                <p className="text-sm font-medium text-foreground mb-1">天气适配</p>
-                <p className="text-xs text-muted-foreground">22-28°C 温度范围，透气舒适不闷热</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/40">
-                <p className="text-sm font-medium text-foreground mb-1">色彩协调</p>
-                <p className="text-xs text-muted-foreground">经典配色方案，简洁大方不出错</p>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-
         {/* More Menu Sheet */}
         <Sheet open={showMoreMenu} onOpenChange={setShowMoreMenu}>
-          <SheetContent className="sm:max-w-sm">
+          <SheetContent className="sm:max-w-lg">
             <SheetHeader>
               <SheetTitle>更多操作</SheetTitle>
-              <SheetDescription>对当前搭配进行更多操作</SheetDescription>
             </SheetHeader>
-            <div className="py-4 space-y-2">
-              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
-                <RefreshCw className="h-4 w-4 mr-3" />
-                重新生成
+            <div className="space-y-2 py-4">
+              <Button variant="ghost" className="w-full justify-start h-11">
+                <Check className="h-4 w-4 mr-3" />
+                保存搭配
               </Button>
-              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
-                <ArrowRightLeft className="h-4 w-4 mr-3" />
-                复制方案
-              </Button>
-              <Button variant="ghost" className="w-full justify-start h-11" onClick={() => setShowMoreMenu(false)}>
+              <Button variant="ghost" className="w-full justify-start h-11">
                 <Send className="h-4 w-4 mr-3" />
                 分享图片
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Unsaved changes dialog */}
-        <Sheet open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-          <SheetContent className="sm:max-w-sm">
-            <SheetHeader>
-              <SheetTitle>未保存的修改</SheetTitle>
-              <SheetDescription>你有未保存的搭配修改，是否保存？</SheetDescription>
-            </SheetHeader>
-            <div className="py-4 space-y-3">
-              <Button
-                className="w-full h-11 bg-primary hover:bg-primary/90"
-                onClick={() => {
-                  setShowUnsavedDialog(false);
-                  handleEditingComplete();
-                }}
-              >
-                保存草稿
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full h-11"
-                onClick={() => {
-                  setShowUnsavedDialog(false);
-                  setPageState('empty');
-                }}
-              >
-                不保存
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full h-11 text-muted-foreground"
-                onClick={() => setShowUnsavedDialog(false)}
-              >
-                继续编辑
               </Button>
             </div>
           </SheetContent>
