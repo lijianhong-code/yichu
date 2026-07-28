@@ -379,24 +379,23 @@ export default function AIStylingPage() {
           </div>
         </header>
 
-        {/* ==================== PERMANENT OUTFIT AREA ==================== */}
+        {/* ==================== PERMANENT OUTFIT AREA (常驻搭配区) ==================== */}
         <div className="px-4 pt-4">
           <div className="rounded-xl outfit-stage noise-texture relative overflow-hidden" style={{ minHeight: '48vh', maxHeight: '56vh' }}>
+            {/* CANVAS - Always visible */}
+            <OutfitCanvas
+              initialItems={pageState === 'editing' ? canvasItems : pageState === 'preview' ? (candidates[previewCandidateIndex]?.outfit.items || []).map((item, idx) => ({ id: `${item.id}-${idx}`, itemId: item.id, item, x: 0.2 + (idx * 0.2), y: 0.3, scale: 1, locked: false, zIndex: idx })) : []}
+              editable={pageState === 'editing'}
+              onSave={(items) => {
+                setCanvasItems(items);
+                pushEditHistory(items);
+              }}
+              onAddFromWardrobe={() => setTrayOpen(true)}
+            />
             
-            {/* EMPTY STATE */}
-            {pageState === 'empty' && (
-              <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8">
-                <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">当前没有搭配</p>
-                <p className="text-xs text-muted-foreground/60">描述需求让 AI 帮你搭，或手动组合</p>
-              </div>
-            )}
-
-            {/* LOADING STATE */}
+            {/* OVERLAY: Loading state */}
             {pageState === 'loading' && (
-              <div className="flex flex-col items-center justify-center h-full min-h-[48vh] py-8 px-6">
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center py-8 px-6 z-10">
                 <div className="flex items-center justify-center gap-3 flex-wrap mb-8">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-muted/60" />
@@ -432,58 +431,6 @@ export default function AIStylingPage() {
                   <Progress value={progress} className="h-1.5 rounded-full" />
                 </div>
               </div>
-            )}
-
-            {/* PREVIEW STATE - 3 candidate thumbnails */}
-            {pageState === 'preview' && (
-              <div className="flex flex-col h-full min-h-[48vh]">
-                <div className="flex-1 flex items-center justify-center p-4">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-4">点击方案加载到画布进行编辑</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {(candidates || []).map((candidate, index) => (
-                        <button
-                          key={candidate.id}
-                          onClick={() => handleLoadToCanvas(index)}
-                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 hover:shadow-md card-interactive ${
-                            index === previewCandidateIndex
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                              : 'border-border/30 bg-background/60'
-                          }`}
-                        >
-                          <div className="flex -space-x-1">
-                            {(candidate.outfit.items || []).slice(0, 3).map((item, idx) => (
-                              item ? (
-                              <div key={item.id || idx} className="h-8 w-8 rounded-full bg-muted overflow-hidden border border-background">
-                                <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
-                              </div>
-                              ) : null
-                            ))}
-                          </div>
-                          <span className={`text-xs font-medium ${
-                            index === previewCandidateIndex ? 'text-primary' : 'text-muted-foreground'
-                          }`}>
-                            {candidate.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* EDITING STATE - canvas */}
-            {pageState === 'editing' && (
-              <OutfitCanvas
-                initialItems={canvasItems}
-                editable
-                onSave={(items) => {
-                  setCanvasItems(items);
-                  pushEditHistory(items);
-                }}
-                onAddFromWardrobe={() => setTrayOpen(true)}
-              />
             )}
           </div>
         </div>
@@ -562,6 +509,36 @@ export default function AIStylingPage() {
         {/* PREVIEW STATE actions */}
         {pageState === 'preview' && (
           <div className="px-4 pt-4 space-y-3">
+            {/* Candidate thumbnails - 3 schemes */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {(candidates || []).map((candidate, index) => (
+                <button
+                  key={candidate.id}
+                  onClick={() => handleLoadToCanvas(index)}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md card-interactive shrink-0 min-w-[100px] ${
+                    index === previewCandidateIndex
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border/30 bg-background/60'
+                  }`}
+                >
+                  <div className="flex -space-x-1">
+                    {(candidate.outfit.items || []).slice(0, 3).map((item, idx) => (
+                      item ? (
+                        <div key={item.id || idx} className="h-7 w-7 rounded-full bg-muted overflow-hidden border border-background">
+                          <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ) : null
+                    ))}
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    index === previewCandidateIndex ? 'text-primary' : 'text-muted-foreground'
+                  }`}>
+                    {candidate.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
             {/* Explanation */}
             <div className="flex items-start gap-2">
               <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />

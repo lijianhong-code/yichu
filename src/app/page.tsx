@@ -51,7 +51,6 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export default function HomePage() {
   const [currentAltIndex, setCurrentAltIndex] = useState(0);
-  const [showWhy, setShowWhy] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [showReplacement, setShowReplacement] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -183,17 +182,6 @@ export default function HomePage() {
                   {currentOutfit.occasion}
                 </Badge>
               </div>
-
-              {/* Why button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWhy(true)}
-                className="flex items-center gap-1.5 mt-2.5 text-[12px] text-muted-foreground hover:text-primary transition-colors h-auto px-1.5 py-1"
-              >
-                <Info className="h-3.5 w-3.5" />
-                为什么推荐这套？
-              </Button>
             </div>
 
             {/* Navigation arrows */}
@@ -272,73 +260,6 @@ export default function HomePage() {
             <span className="text-xs font-medium">参考图搭配</span>
           </Button>
         </section>
-
-        {/* AI Insight */}
-        <section className="px-4 pt-6">
-          <Card className="border-border/40 insight-gradient overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-full bg-ai-100/80 flex items-center justify-center flex-shrink-0 ai-glow">
-                  <Sparkles className="h-4 w-4 text-ai-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-ai-600">AI 洞察</p>
-                  <p className="text-sm text-foreground mt-1 leading-relaxed">
-                    你本周穿了 12 件不同的单品，衣橱利用率达到 64%。有 5 件单品超过 2 周没穿，要不要给它们一个亮相的机会？
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Why Sheet */}
-        <Sheet open={showWhy} onOpenChange={setShowWhy}>
-          <SheetContent className="sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>为什么推荐这套？</SheetTitle>
-              <SheetDescription>基于你的衣橱、天气和偏好生成</SheetDescription>
-            </SheetHeader>
-            <div className="py-4 space-y-3 stagger-children">
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <ThermometerSun className="h-4 w-4 text-accent-foreground" />
-                  <span className="text-sm font-medium">天气适配</span>
-                </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  22-28°C 多云，这套穿搭透气舒适，适合今天的温度
-                </p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">场合适配</span>
-                </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  商务休闲风格，适合日常通勤和办公环境
-                </p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Shirt className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">色彩协调</span>
-                </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  白色 + 深蓝 + 棕色，经典配色方案，简洁大方
-                </p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-ai-600" />
-                  <span className="text-sm font-medium">新鲜度</span>
-                </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  有 2 件单品超过一周没穿，帮你唤醒沉睡衣物
-                </p>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
 
         {/* Replacement Drawer */}
         <Sheet open={showReplacement} onOpenChange={setShowReplacement}>
