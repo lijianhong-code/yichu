@@ -14,14 +14,11 @@ import {
   Edit3,
   Trash2,
   Package,
-  LayoutGrid,
-  Grid3x3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Sheet,
   SheetContent,
@@ -37,13 +34,12 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { wardrobeItems, categories, outfits } from '@/lib/mock-data';
+import { wardrobeItems, categories } from '@/lib/mock-data';
 import type { WardrobeItem } from '@/lib/mock-data';
 
 export default function WardrobePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  const [viewMode, setViewMode] = useState<'items' | 'outfits'>('items');
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
@@ -117,26 +113,6 @@ export default function WardrobePage() {
             />
           </div>
 
-          {/* View mode tabs */}
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'items' | 'outfits')} className="mb-3">
-            <TabsList className="h-9 bg-muted/30 rounded-lg p-0.5 border border-border/30">
-              <TabsTrigger
-                value="items"
-                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/30"
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                单品
-              </TabsTrigger>
-              <TabsTrigger
-                value="outfits"
-                className="gap-1.5 text-xs rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/30"
-              >
-                <Grid3x3 className="h-3.5 w-3.5" />
-                穿搭
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           {/* Category chips */}
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2 pb-2">
@@ -163,72 +139,37 @@ export default function WardrobePage() {
 
       {/* Content */}
       <div className="px-4 pt-4">
-        {viewMode === 'items' ? (
-          <>
-            {filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
-                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">没有找到匹配的衣物</p>
-                <p className="text-xs text-muted-foreground">试试其他搜索词或筛选条件</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedItem(item)}
-                    className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
-                  >
-                    {/* Image area - 4:5 ratio */}
-                    <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                      />
-                      {getStatusBadge(item.status)}
-                      {/* Subtle gradient overlay on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    {/* Info */}
-                    <div className="p-2.5">
-                      <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.subCategory}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
+        {filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
+              <Shirt className="h-8 w-8 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">没有找到匹配的衣物</p>
+            <p className="text-xs text-muted-foreground">试试其他搜索词或筛选条件</p>
+          </div>
         ) : (
-          /* Outfits view */
           <div className="grid grid-cols-2 gap-3">
-            {outfits.map((outfit) => (
+            {filteredItems.map((item) => (
               <button
-                key={outfit.id}
-                className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 card-interactive text-left"
+                key={item.id}
+                onClick={() => setSelectedItem(item)}
+                className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
               >
-                {/* Outfit thumbnail - 3:4 ratio */}
-                <div className="relative aspect-[3/4] bg-muted/40 p-3 flex items-center justify-center">
-                  <div className="grid grid-cols-2 gap-1.5 w-full">
-                    {outfit.items.slice(0, 4).map((item) => (
-                      <div key={item.id} className="aspect-square rounded-md bg-background overflow-hidden shadow-sm">
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                  {outfit.source === 'ai_text' && (
-                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-ai-50/90 backdrop-blur-sm flex items-center justify-center">
-                      <span className="text-[8px] text-ai-600 font-bold">AI</span>
-                    </div>
-                  )}
+                {/* Image area - 4:5 ratio */}
+                <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                  {getStatusBadge(item.status)}
+                  {/* Subtle gradient overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 {/* Info */}
                 <div className="p-2.5">
-                  <p className="text-xs font-medium text-foreground truncate">{outfit.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{outfit.occasion}</p>
+                  <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{item.subCategory}</p>
                 </div>
               </button>
             ))}

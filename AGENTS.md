@@ -15,19 +15,19 @@ AI智慧衣橱 Web 应用，基于 Next.js 16 + React 19 + TypeScript + Tailwind
 ## 目录结构
 ```
 src/
-├── app/
-│   ├── page.tsx              # 首页 - 今日穿搭推荐
-│   ├── wardrobe/page.tsx     # 衣橱页 - 单品/穿搭管理
+── app/
+│   ├── wardrobe/page.tsx     # 衣橱页 - 单品管理
 │   ├── ai-styling/page.tsx   # 搭配页 - 常驻搭配区+情境化操作
+│   ├── calendar/page.tsx     # 日历页 - 周视图/月视图/日期详情
 │   ├── profile/page.tsx      # 我的页面 - 偏好与洞察
 │   ├── layout.tsx            # 全局布局 + 底部Tab导航
-│   └── globals.css           # 设计Token + 全局样式
+│   ── globals.css           # 设计Token + 全局样式
 ├── components/
 │   ├── ui/                   # shadcn/ui 组件库
 │   └── bottom-tab-nav.tsx    # 底部Tab导航组件
 ├── lib/
 │   ├── utils.ts              # 通用工具函数
-│   └── mock-data.ts          # Mock数据（衣物、穿搭、用户）
+│   └── mock-data.ts          # Mock数据（衣物、穿搭、日历、用户）
 ├── hooks/                    # 自定义Hooks
 └── test/
     ├── setup.ts              # 测试环境配置

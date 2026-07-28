@@ -484,7 +484,7 @@ export default function AIStylingPage() {
               </div>
             </div>
 
-            {/* AI 帮我搭 & 手动搭一套 - side by side */}
+            {/* 智能生成 & 从衣橱添加 - side by side */}
             <div className="flex gap-2">
               <Button
                 className="flex-1 h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
@@ -492,7 +492,7 @@ export default function AIStylingPage() {
                 disabled={!inputValue.trim()}
               >
                 <Sparkles className="h-4 w-4 mr-1.5" />
-                AI 帮我搭
+                智能生成
               </Button>
               <Button
                 variant="outline"
@@ -500,7 +500,7 @@ export default function AIStylingPage() {
                 onClick={handleManualEdit}
               >
                 <Pencil className="h-4 w-4 mr-1.5" />
-                手动搭一套
+                从衣橱添加
               </Button>
             </div>
           </div>

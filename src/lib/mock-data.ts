@@ -409,6 +409,69 @@ export const categories = [
   { label: '配饰', value: '配饰' },
 ];
 
+// Calendar events for outfit planning
+export interface CalendarEvent {
+  id: string;
+  date: string;
+  type: 'planned' | 'worn';
+  outfitId?: string;
+  outfit?: Outfit;
+  occasion?: string;
+  weather?: string;
+  feedback?: string;
+}
+
+export const calendarEvents: CalendarEvent[] = [
+  {
+    id: 'cal-001',
+    date: '2026-07-28',
+    type: 'planned',
+    outfitId: 'outfit-001',
+    outfit: outfits[0],
+    occasion: '通勤',
+    weather: '22-28°C 多云',
+  },
+  {
+    id: 'cal-002',
+    date: '2026-07-27',
+    type: 'worn',
+    outfitId: 'outfit-002',
+    outfit: outfits[1],
+    occasion: '休闲',
+    weather: '24-30°C 晴',
+    feedback: '刚好',
+  },
+  {
+    id: 'cal-003',
+    date: '2026-07-26',
+    type: 'worn',
+    outfitId: 'outfit-003',
+    outfit: outfits[2],
+    occasion: '约会',
+    weather: '20-26°C 晴',
+    feedback: '刚好',
+  },
+  {
+    id: 'cal-004',
+    date: '2026-07-25',
+    type: 'worn',
+    outfitId: 'outfit-001',
+    outfit: outfits[0],
+    occasion: '通勤',
+    weather: '21-27°C 阴',
+    feedback: '刚好',
+  },
+  {
+    id: 'cal-005',
+    date: '2026-07-30',
+    type: 'planned',
+    outfitId: 'outfit-004',
+    outfit: outfits[3],
+    occasion: '通勤',
+    weather: '19-25°C 多云',
+  },
+];
+
 // Weather context
 export const weatherContext = {
   city: '上海',
