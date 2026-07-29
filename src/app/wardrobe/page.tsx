@@ -437,7 +437,7 @@ export default function WardrobePage() {
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 <button
                   onClick={() => setShowItemActions(true)}
-                  className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-background transition-colors"
+                  className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-background transition-colors"
                 >
                   <MoreHorizontal className="h-4 w-4 text-foreground" />
                 </button>
