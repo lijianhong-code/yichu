@@ -51,7 +51,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { OutfitCanvas, type CanvasItem } from '@/components/outfit-canvas';
 import { WardrobeTray } from '@/components/wardrobe-tray';
-import { todayOutfit, wardrobeItems, quickScenarios } from '@/lib/mock-data';
+import { wardrobeItems, quickScenarios } from '@/lib/mock-data';
 import type { WardrobeItem } from '@/lib/mock-data';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -71,34 +71,16 @@ const loadingStages = [
   { label: '正在生成搭配方案', duration: 1000 },
 ];
 
-// Mock 3 candidate outfits
-const mockCandidates = [
-  {
-    id: 'candidate-1',
-    label: '稳妥通勤',
-    outfit: todayOutfit,
-  },
-  {
-    id: 'candidate-2',
-    label: '更轻松',
-    outfit: {
-      ...todayOutfit,
-      name: '轻松商务风',
-      explanation: '针织衫搭配休闲裤，舒适又不失体面，适合轻松的办公环境。',
-      items: todayOutfit.items.slice(0, 3),
-    },
-  },
-  {
-    id: 'candidate-3',
-    label: '更有风格',
-    outfit: {
-      ...todayOutfit,
-      name: '时尚通勤风',
-      explanation: '衬衫搭配高腰裤与乐福鞋，经典配色中融入个性细节。',
-      items: [todayOutfit.items[0], todayOutfit.items[2], todayOutfit.items[4]],
-    },
-  },
-];
+// Candidate outfit type (matches API response)
+interface CandidateOutfit {
+  id: string;
+  label: string;
+  outfit: {
+    name: string;
+    explanation: string;
+    items: WardrobeItem[];
+  };
+}
 
 export default function AIStylingPage() {
   const [pageState, setPageState] = useState<PageState>('empty');
@@ -111,8 +93,9 @@ export default function AIStylingPage() {
   const [showWhy, setShowWhy] = useState(false);
 
   // Candidate state
-  const [candidates] = useState(mockCandidates);
+  const [candidates, setCandidates] = useState<CandidateOutfit[]>([]);
   const [previewCandidateIndex, setPreviewCandidateIndex] = useState(0);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Canvas / editing state
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
@@ -120,10 +103,10 @@ export default function AIStylingPage() {
   const [editHistory, setEditHistory] = useState<{ items: CanvasItem[] }[]>([]);
   const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
 
-  const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? todayOutfit;
+  const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? { name: '', explanation: '', items: [] as WardrobeItem[] };
 
   // Initialize canvas from outfit
-  const initCanvasFromOutfit = useCallback((outfit: typeof todayOutfit) => {
+  const initCanvasFromOutfit = useCallback((outfit: { name: string; explanation: string; items: WardrobeItem[] }) => {
     const items: CanvasItem[] = outfit.items.map((wardrobeItem, index) => {
       const totalItems = outfit.items.length;
       const cols = Math.min(3, totalItems);
@@ -172,16 +155,61 @@ export default function AIStylingPage() {
     }
   }, [editHistory, editHistoryIndex]);
 
-  // Generate
-  const handleGenerate = () => {
+  // Generate - call real AI API
+  const handleGenerate = async () => {
     if (!inputValue.trim()) return;
     setPageState('loading');
     setCurrentStage(0);
     setProgress(0);
     setPreviewCandidateIndex(0);
+    setAiError(null);
+
+    try {
+      const response = await fetch('/api/ai/styling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userInput: inputValue,
+          weather: { temperature: 18, condition: '晴转多云', feelsLike: 16 },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI 服务返回 ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.candidates?.length > 0) {
+        // Map API response to CandidateOutfit format
+        const apiCandidates: CandidateOutfit[] = data.candidates.map((c: {
+          id: string;
+          label: string;
+          outfit: { name: string; explanation: string; items: WardrobeItem[] };
+        }) => ({
+          id: c.id,
+          label: c.label,
+          outfit: {
+            name: c.outfit.name,
+            explanation: c.outfit.explanation,
+            items: c.outfit.items,
+          },
+        }));
+
+        setCandidates(apiCandidates);
+        setProgress(100);
+        setPageState('preview');
+      } else {
+        throw new Error(data.error || 'AI 未能生成搭配方案');
+      }
+    } catch (error) {
+      console.error('[AI Styling] Error:', error);
+      setAiError(error instanceof Error ? error.message : 'AI 搭配生成失败，请重试');
+      setPageState('empty');
+    }
   };
 
-  // Loading animation
+  // Loading animation (progress bar only, API controls state transition)
   useEffect(() => {
     if (pageState !== 'loading') return;
 
@@ -192,18 +220,12 @@ export default function AIStylingPage() {
       return setTimeout(() => {
         setCurrentStage(index);
         totalElapsed = loadingStages.slice(0, index + 1).reduce((sum, s) => sum + s.duration, 0);
-        setProgress(Math.round((totalElapsed / totalDuration) * 100));
+        setProgress(Math.round((totalElapsed / totalDuration) * 90)); // Cap at 90%, API controls final 100%
       }, loadingStages.slice(0, index).reduce((sum, s) => sum + s.duration, 0));
     });
 
-    const completeTimer = setTimeout(() => {
-      setProgress(100);
-      setTimeout(() => setPageState('preview'), 300);
-    }, totalDuration);
-
     return () => {
       timers.forEach(clearTimeout);
-      clearTimeout(completeTimer);
     };
   }, [pageState]);
 
@@ -268,30 +290,118 @@ export default function AIStylingPage() {
   };
 
   // AI Complete missing slots
-  const handleAIComplete = () => {
-    const existingCategories = new Set(
-      canvasItems.map((ci) => ci.item.category)
-    );
-    const missingCategories = ['bottoms', 'shoes'].filter((c) => !existingCategories.has(c));
+  const handleAIComplete = async () => {
+    if (canvasItems.length === 0) return;
 
-    const newItems = [...canvasItems];
-    missingCategories.forEach((cat) => {
-      const candidate = wardrobeItems.find((w) => w.category === cat && !newItems.some((ni) => ni.item.id === w.id));
-      if (candidate) {
-        newItems.push({
-          id: `canvas-${candidate.id}`,
-          itemId: candidate.id,
-          item: candidate,
-          x: 20 + (newItems.length % 3) * 30,
-          y: 15 + Math.floor(newItems.length / 3) * 35,
-          scale: 1,
-          locked: false,
-          zIndex: newItems.length,
+    try {
+      const response = await fetch('/api/ai/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentItemIds: canvasItems.map((ci) => ci.item.id),
+          style: inputValue || '日常',
+        }),
+      });
+
+      if (!response.ok) throw new Error('AI 补全请求失败');
+
+      const data = await response.json();
+
+      if (data.success && data.suggestions?.length > 0) {
+        const newItems = [...canvasItems];
+        data.suggestions.forEach((s: { item: WardrobeItem; reason: string }) => {
+          const suggested = s.item;
+          // Avoid duplicates
+          if (!newItems.some((ni) => ni.item.id === suggested.id)) {
+            newItems.push({
+              id: `canvas-${suggested.id}`,
+              itemId: suggested.id,
+              item: suggested,
+              x: 20 + (newItems.length % 3) * 30,
+              y: 15 + Math.floor(newItems.length / 3) * 35,
+              scale: 1,
+              locked: false,
+              zIndex: newItems.length,
+            });
+          }
         });
+        setCanvasItems(newItems);
+        pushEditHistory(newItems);
       }
+    } catch (error) {
+      console.error('[AI Complete] Error:', error);
+      // Fallback: use Chinese category names
+      const existingCategories = new Set(canvasItems.map((ci) => ci.item.category));
+      const neededCategories = ['下装', '鞋', '外套', '包'].filter((c) => !existingCategories.has(c));
+
+      const newItems = [...canvasItems];
+      neededCategories.forEach((cat) => {
+        const candidate = wardrobeItems.find((w) => w.category === cat && !newItems.some((ni) => ni.item.id === w.id));
+        if (candidate) {
+          newItems.push({
+            id: `canvas-${candidate.id}`,
+            itemId: candidate.id,
+            item: candidate,
+            x: 20 + (newItems.length % 3) * 30,
+            y: 15 + Math.floor(newItems.length / 3) * 35,
+            scale: 1,
+            locked: false,
+            zIndex: newItems.length,
+          });
+        }
+      });
+      setCanvasItems(newItems);
+      pushEditHistory(newItems);
+    }
+  };
+
+  // "今天穿" - mark current outfit as worn today
+  const handleWearToday = () => {
+    const outfit = candidates[previewCandidateIndex]?.outfit;
+    if (!outfit) return;
+
+    // Create wear log entry (in real app, this would call an API)
+    const today = new Date().toISOString().split('T')[0];
+    const wearLog = {
+      date: today,
+      outfitId: candidates[previewCandidateIndex]?.id || 'manual',
+      outfitName: outfit.name,
+      itemIds: outfit.items.map((i) => i.id),
+      occasion: '日常',
+      weather: { temperature: 18, condition: '晴' },
+      feedback: null,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store in localStorage for now (will be replaced by real API)
+    const existingLogs = JSON.parse(localStorage.getItem('wearLogs') || '[]');
+    existingLogs.push(wearLog);
+    localStorage.setItem('wearLogs', JSON.stringify(existingLogs));
+
+    // Show brief success feedback
+    setAiError(null);
+    alert(`已记录今天穿搭：${outfit.name}`);
+  };
+
+  // Save outfit
+  const handleSaveOutfit = () => {
+    const outfit = pageState === 'editing'
+      ? { name: candidates[previewCandidateIndex]?.outfit?.name || '我的搭配', explanation: '', items: canvasItems.map((ci) => ci.item) }
+      : candidates[previewCandidateIndex]?.outfit;
+
+    if (!outfit) return;
+
+    // Store in localStorage for now (will be replaced by real API)
+    const savedOutfits = JSON.parse(localStorage.getItem('savedOutfits') || '[]');
+    savedOutfits.push({
+      id: `outfit-${Date.now()}`,
+      ...outfit,
+      createdAt: new Date().toISOString(),
+      source: pageState === 'editing' ? 'manual' : 'ai',
     });
-    setCanvasItems(newItems);
-    pushEditHistory(newItems);
+    localStorage.setItem('savedOutfits', JSON.stringify(savedOutfits));
+    setShowMoreMenu(false);
+    alert(`已保存搭配：${outfit.name}`);
   };
 
   // Restore layout
@@ -340,7 +450,7 @@ export default function AIStylingPage() {
                 </h1>
                 {pageState !== 'empty' && (
                   <p className="text-[10px] text-muted-foreground">
-                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : previewOutfit.occasion}
+                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}
                   </p>
                 )}
               </div>
@@ -440,6 +550,16 @@ export default function AIStylingPage() {
         {/* EMPTY STATE actions */}
         {pageState === 'empty' && (
           <div className="px-4 pt-5 space-y-3">
+            {/* AI error message */}
+            {aiError && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+                <X className="h-4 w-4 flex-shrink-0" />
+                <span>{aiError}</span>
+                <button onClick={() => setAiError(null)} className="ml-auto text-destructive/60 hover:text-destructive">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {/* AI input area - OpenAI style */}
             <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
               <Textarea
@@ -555,7 +675,7 @@ export default function AIStylingPage() {
 
             {/* Main actions */}
             <div className="flex gap-3">
-              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all">
+              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all" onClick={handleWearToday}>
                 <Check className="h-4 w-4 mr-2" />
                 今天穿
               </Button>
@@ -772,7 +892,7 @@ export default function AIStylingPage() {
               <SheetTitle>更多操作</SheetTitle>
             </SheetHeader>
             <div className="space-y-2 py-4">
-              <Button variant="ghost" className="w-full justify-start h-11">
+              <Button variant="ghost" className="w-full justify-start h-11" onClick={handleSaveOutfit}>
                 <Check className="h-4 w-4 mr-3" />
                 保存搭配
               </Button>
