@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -63,9 +63,55 @@ export default function WardrobePage() {
   const [showFilter, setShowFilter] = useState(false);
   const [showItemActions, setShowItemActions] = useState(false);
   const [itemStatus, setItemStatus] = useState<Record<string, WardrobeItem['status']>>({});
+  const [uploadedItems, setUploadedItems] = useState<WardrobeItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file upload (simulates AI recognition)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    // Simulate AI processing delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const newItems: WardrobeItem[] = Array.from(files).map((file, index) => {
+      const itemId = `uploaded-${Date.now()}-${index}`;
+      // Create a local URL for the uploaded image
+      const imageUrl = URL.createObjectURL(file);
+      // Generate a mock item based on file name
+      const fileName = file.name.replace(/\.[^/.]+$/, '');
+      return {
+        id: itemId,
+        name: fileName || `新衣物 ${index + 1}`,
+        category: '上装',
+        subCategory: 'T恤',
+        primaryColor: '#808080',
+        colors: ['灰色'],
+        season: ['春夏', '秋冬'],
+        occasions: ['日常'],
+        style: ['简约'],
+        material: '棉',
+        pattern: '纯色',
+        status: 'available' as const,
+        wearCount: 0,
+        lastWorn: '',
+        imageUrl,
+        addedAt: new Date().toISOString().split('T')[0],
+      };
+    });
+
+    setUploadedItems((prev) => [...newItems, ...prev]);
+    setUploading(false);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const filteredItems = useMemo(() => {
-    let items = wardrobeItems;
+    let items = [...wardrobeItems, ...uploadedItems];
     if (activeCategory !== 'all') {
       items = items.filter((item) => item.category === activeCategory);
     }
@@ -79,7 +125,7 @@ export default function WardrobePage() {
       );
     }
     return items;
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, uploadedItems]);
 
   const itemCounts = useMemo(() => {
     const counts: Record<string, number> = { all: wardrobeItems.length };
@@ -379,6 +425,11 @@ export default function WardrobePage() {
             <Button
               variant="outline"
               className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+              onClick={() => {
+                setShowAddMenu(false);
+                fileInputRef.current?.setAttribute('capture', 'environment');
+                fileInputRef.current?.click();
+              }}
             >
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Camera className="h-5 w-5 text-primary" />
@@ -391,6 +442,12 @@ export default function WardrobePage() {
             <Button
               variant="outline"
               className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
+              onClick={() => {
+                setShowAddMenu(false);
+                fileInputRef.current?.removeAttribute('capture');
+                fileInputRef.current?.setAttribute('multiple', 'multiple');
+                fileInputRef.current?.click();
+              }}
             >
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <ImageIcon className="h-5 w-5 text-primary" />
@@ -400,23 +457,15 @@ export default function WardrobePage() {
                 <p className="text-xs text-muted-foreground">从相册选择多张图片</p>
               </div>
             </Button>
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
-              onClick={() => {
-                setShowAddMenu(false);
-                router.push('/ai-styling');
-              }}
-            >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Shirt className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">添加整套穿搭</p>
-                <p className="text-xs text-muted-foreground">手动创建一套搭配</p>
-              </div>
-            </Button>
           </div>
+          {/* Hidden file input for image upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
         </SheetContent>
       </Sheet>
 
