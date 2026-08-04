@@ -65,6 +65,8 @@ export default function WardrobePage() {
   const [itemStatus, setItemStatus] = useState<Record<string, WardrobeItem['status']>>({});
   const [uploadedItems, setUploadedItems] = useState<WardrobeItem[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<WardrobeItem>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file upload (simulates AI recognition)
@@ -170,6 +172,30 @@ export default function WardrobePage() {
     setItemStatus(prev => ({ ...prev, [selectedItem.id]: status }));
     setShowItemActions(false);
     setSelectedItem(null);
+  };
+
+  // Handle open edit form
+  const handleOpenEditForm = () => {
+    if (!selectedItem) return;
+    setEditFormData({
+      name: selectedItem.name,
+      category: selectedItem.category,
+      subCategory: selectedItem.subCategory,
+      colors: selectedItem.colors,
+      occasions: selectedItem.occasions,
+      style: selectedItem.style,
+    });
+    setShowItemActions(false);
+    setShowEditForm(true);
+  };
+
+  // Handle save edit
+  const handleSaveEdit = () => {
+    if (!selectedItem) return;
+    // In a real app, this would update the item in the database
+    // For now, we just close the form
+    setShowEditForm(false);
+    setEditFormData({});
   };
 
   return (
@@ -590,10 +616,7 @@ export default function WardrobePage() {
             <Button
               variant="ghost"
               className="w-full justify-start h-12 gap-3"
-              onClick={() => {
-                setShowItemActions(false);
-                // Edit functionality - could open edit form
-              }}
+              onClick={handleOpenEditForm}
             >
               <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                 <Edit3 className="h-4 w-4 text-foreground" />
@@ -815,6 +838,128 @@ export default function WardrobePage() {
             <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 btn-primary-glow" onClick={() => setShowFilter(false)}>
               查看 {filteredItems.length} 件结果
             </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Item Form */}
+      <Sheet open={showEditForm} onOpenChange={setShowEditForm}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>编辑衣物信息</SheetTitle>
+            <SheetDescription>修改单品的名称、分类、标签等信息</SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-full px-4 pb-24">
+            <div className="space-y-5 py-4">
+              {/* Name */}
+              <div>
+                <label className="text-sm font-medium text-foreground">名称</label>
+                <input
+                  type="text"
+                  value={editFormData.name || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full mt-1.5 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="输入衣物名称"
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="text-sm font-medium text-foreground">分类</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {['上装', '下装', '外套', '连衣裙', '鞋', '包', '配饰'].map((cat) => (
+                    <Button
+                      key={cat}
+                      variant={editFormData.category === cat ? 'default' : 'outline'}
+                      size="sm"
+                      className={editFormData.category === cat ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
+                      onClick={() => setEditFormData(prev => ({ ...prev, category: cat }))}
+                    >
+                      {cat}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div>
+                <label className="text-sm font-medium text-foreground">颜色</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {['白色', '黑色', '蓝色', '灰色', '棕色', '绿色', '红色', '粉色', '黄色', '紫色'].map((color) => (
+                    <Button
+                      key={color}
+                      variant={editFormData.colors?.includes(color) ? 'default' : 'outline'}
+                      size="sm"
+                      className={editFormData.colors?.includes(color) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
+                      onClick={() => {
+                        const colors = editFormData.colors || [];
+                        if (colors.includes(color)) {
+                          setEditFormData(prev => ({ ...prev, colors: colors.filter(c => c !== color) }));
+                        } else {
+                          setEditFormData(prev => ({ ...prev, colors: [...colors, color] }));
+                        }
+                      }}
+                    >
+                      {color}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Occasions */}
+              <div>
+                <label className="text-sm font-medium text-foreground">场合</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {['日常', '通勤', '商务', '休闲', '运动', '约会', '度假'].map((occasion) => (
+                    <Button
+                      key={occasion}
+                      variant={editFormData.occasions?.includes(occasion) ? 'default' : 'outline'}
+                      size="sm"
+                      className={editFormData.occasions?.includes(occasion) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
+                      onClick={() => {
+                        const occasions = editFormData.occasions || [];
+                        if (occasions.includes(occasion)) {
+                          setEditFormData(prev => ({ ...prev, occasions: occasions.filter(o => o !== occasion) }));
+                        } else {
+                          setEditFormData(prev => ({ ...prev, occasions: [...occasions, occasion] }));
+                        }
+                      }}
+                    >
+                      {occasion}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Style */}
+              <div>
+                <label className="text-sm font-medium text-foreground">风格</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {['简约', '休闲', '商务', '运动', '优雅', '街头', '复古'].map((style) => (
+                    <Button
+                      key={style}
+                      variant={editFormData.style?.includes(style) ? 'default' : 'outline'}
+                      size="sm"
+                      className={editFormData.style?.includes(style) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
+                      onClick={() => {
+                        const styleArr = editFormData.style || [];
+                        if (styleArr.includes(style)) {
+                          setEditFormData(prev => ({ ...prev, style: styleArr.filter(s => s !== style) }));
+                        } else {
+                          setEditFormData(prev => ({ ...prev, style: [...styleArr, style] }));
+                        }
+                      }}
+                    >
+                      {style}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+          <div className="absolute bottom-0 left-0 right-0 p-4 glass-surface-strong border-t border-border/30 flex gap-3">
+            <Button variant="outline" className="flex-1 h-11" onClick={() => setShowEditForm(false)}>取消</Button>
+            <Button className="flex-1 h-11 bg-primary hover:bg-primary/90 btn-primary-glow" onClick={handleSaveEdit}>保存</Button>
           </div>
         </SheetContent>
       </Sheet>
