@@ -170,7 +170,7 @@ export const wardrobeItems: WardrobeItem[] = [
     status: 'available',
     wearCount: 30,
     lastWorn: '2026-07-23',
-    imageUrl: '/clothing/black-bag.jpeg',
+    imageUrl: '/clothing/black-crossbody-bag.jpeg',
     confidence: 0.97,
   },
   {
@@ -343,7 +343,7 @@ export const wardrobeItems: WardrobeItem[] = [
     lastWorn: '2026-07-10',
     confidence: 0.95,
     description: '柔软米色羊绒高领毛衣，细腻针织纹理，修身剪裁展现优雅气质，适合秋冬叠穿或单穿',
-    imageUrl: '/clothing/beige-turtleneck.jpeg',
+    imageUrl: '/clothing/beige-sweater.jpeg',
   },
   {
     id: 'item-016',
