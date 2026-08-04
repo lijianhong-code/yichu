@@ -48,6 +48,7 @@ export interface OutfitCanvasProps {
   onAIComplete?: (lockedIds: string[]) => void
   onAddFromWardrobe?: () => void
   onReplaceItem?: (itemId: string) => void
+  onSelectionChange?: (itemId: string | null) => void
   editable?: boolean
   className?: string
 }
@@ -112,6 +113,7 @@ export function OutfitCanvas({
   onAIComplete,
   onAddFromWardrobe,
   onReplaceItem,
+  onSelectionChange,
   editable = false,
   className,
 }: OutfitCanvasProps) {
@@ -127,6 +129,11 @@ export function OutfitCanvas({
   const dragStartRef = useRef<{ x: number; y: number; itemX: number; itemY: number } | null>(null)
   const scaleStartRef = useRef<{ x: number; scale: number } | null>(null)
   const guidesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync selection state with parent
+  useEffect(() => {
+    onSelectionChange?.(selectedId)
+  }, [selectedId, onSelectionChange])
 
   const selectedItem = items.find((i) => i.id === selectedId)
   const canUndo = historyIndex > 0
@@ -404,6 +411,129 @@ export function OutfitCanvas({
     }
   }, [isDragging, isScaling, selectedId, items, detectAlignment, pushHistory])
 
+  // ─── Touch Handling (WeChat Mobile Support) ──────────────────────────────
+
+  const handleCanvasTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.target === canvasRef.current || (e.target as HTMLElement).dataset.canvasBg) {
+        setSelectedId(null)
+        setGuides([])
+      }
+    },
+    []
+  )
+
+  const handleItemTouchStart = useCallback(
+    (e: React.TouchEvent, itemId: string) => {
+      if (!editable) return
+      e.stopPropagation()
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
+
+      setSelectedId(itemId)
+      setIsDragging(true)
+
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const touch = e.touches[0]
+      dragStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        itemX: item.x,
+        itemY: item.y,
+      }
+    },
+    [editable, items]
+  )
+
+  const handleScaleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!editable || !selectedItem) return
+      e.stopPropagation()
+      setIsScaling(true)
+      const touch = e.touches[0]
+      scaleStartRef.current = {
+        x: touch.clientX,
+        scale: selectedItem.scale,
+      }
+    },
+    [editable, selectedItem]
+  )
+
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging && !isScaling) return
+      
+      const touch = e.touches[0]
+      if (!touch) return
+
+      if (isDragging && dragStartRef.current && selectedId) {
+        const rect = canvasRef.current?.getBoundingClientRect()
+        if (!rect) return
+
+        const dx = ((touch.clientX - dragStartRef.current.x) / rect.width) * 100
+        const dy = ((touch.clientY - dragStartRef.current.y) / rect.height) * 100
+
+        let newX = dragStartRef.current.itemX + dx
+        let newY = dragStartRef.current.itemY + dy
+
+        // Clamp to canvas bounds
+        const item = items.find((i) => i.id === selectedId)
+        if (item) {
+          const size = ITEM_DEFAULT_SIZES[item.item.category] || { w: 25, h: 25 }
+          newX = Math.max(0, Math.min(100 - size.w * item.scale, newX))
+          newY = Math.max(0, Math.min(100 - size.h * item.scale, newY))
+        }
+
+        setItems((prev) =>
+          prev.map((i) => (i.id === selectedId ? { ...i, x: newX, y: newY } : i))
+        )
+
+        // Detect alignment
+        const newGuides = detectAlignment(selectedId, newX, newY)
+        setGuides(newGuides)
+      }
+
+      if (isScaling && scaleStartRef.current && selectedId) {
+        const dx = touch.clientX - scaleStartRef.current.x
+        const scaleDelta = dx / 200
+        const newScale = Math.max(
+          MIN_SCALE,
+          Math.min(MAX_SCALE, scaleStartRef.current.scale + scaleDelta)
+        )
+        setItems((prev) =>
+          prev.map((i) => (i.id === selectedId ? { ...i, scale: newScale } : i))
+        )
+      }
+    }
+
+    const handleTouchEnd = () => {
+      if (isDragging && selectedId) {
+        pushHistory(items)
+        if (guidesTimeoutRef.current) clearTimeout(guidesTimeoutRef.current)
+        guidesTimeoutRef.current = setTimeout(() => setGuides([]), 300)
+      }
+      if (isScaling && selectedId) {
+        pushHistory(items)
+      }
+      setIsDragging(false)
+      setIsScaling(false)
+      dragStartRef.current = null
+      scaleStartRef.current = null
+    }
+
+    if (isDragging || isScaling) {
+      window.addEventListener("touchmove", handleTouchMove, { passive: false })
+      window.addEventListener("touchend", handleTouchEnd)
+    }
+
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove)
+      window.removeEventListener("touchend", handleTouchEnd)
+    }
+  }, [isDragging, isScaling, selectedId, items, detectAlignment, pushHistory])
+
   // ─── Sync initial items ──────────────────────────────────────────────────
 
   useEffect(() => {
@@ -427,6 +557,7 @@ export function OutfitCanvas({
           maxHeight: "62vh",
         }}
         onMouseDown={handleCanvasMouseDown}
+        onTouchStart={handleCanvasTouchStart}
         data-canvas-bg="true"
       >
         {/* Alignment Guides */}
@@ -475,6 +606,7 @@ export function OutfitCanvas({
                 zIndex: item.zIndex + (isSelected ? 100 : 0),
               }}
               onMouseDown={(e) => handleItemMouseDown(e, item.id)}
+              onTouchStart={(e) => handleItemTouchStart(e, item.id)}
             >
               {/* Item Image */}
               <div
@@ -518,6 +650,7 @@ export function OutfitCanvas({
                 <div
                   className="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-brand-600 border-2 border-white cursor-se-resize shadow-sm z-10"
                   onMouseDown={handleScaleMouseDown}
+                  onTouchStart={handleScaleTouchStart}
                 />
               )}
             </div>
