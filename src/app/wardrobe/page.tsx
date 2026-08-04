@@ -564,6 +564,17 @@ export default function WardrobePage() {
                   </div>
                 </div>
 
+                {/* Description */}
+                {selectedItem.description && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">服饰描述</p>
+                      <p className="text-sm text-foreground leading-relaxed">{selectedItem.description}</p>
+                    </div>
+                  </>
+                )}
+
                 <Separator />
 
                 {/* Actions */}
