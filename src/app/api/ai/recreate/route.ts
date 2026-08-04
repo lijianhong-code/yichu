@@ -175,21 +175,21 @@ ${RECREATE_PROMPT}`
         wardrobeItems.map(i => i.id)
       );
       if (fixedOutfits) {
-        parsed.outfits = fixedOutfits;
+        parsed.outfits = fixedOutfits as typeof parsed.outfits;
       }
     }
 
     // Enrich outfits with item details
-    const enrichedOutfits = (parsed.outfits || []).map(outfit => ({
-      label: outfit.label || '',
-      type: outfit.type || 'most_similar',
-      item_ids: outfit.item_ids || [],
-      slot_mapping: outfit.slot_mapping || [],
-      preserved_features: outfit.preserved_features || [],
-      important_differences: outfit.important_differences || [],
-      reason_short: outfit.reason_short || '',
-      risks: outfit.risks || [],
-      items: outfit.item_ids.map(id => {
+    const enrichedOutfits = (parsed.outfits || []).map((outfit: Record<string, unknown>) => ({
+      label: (outfit.label as string) || '',
+      type: (outfit.type as string) || 'most_similar',
+      item_ids: (outfit.item_ids as string[]) || [],
+      slot_mapping: (outfit.slot_mapping as Array<{reference_slot: string; item_id: string; preserved_aspects: string[]; differences: string[]}>) || [],
+      preserved_features: (outfit.preserved_features as string[]) || [],
+      important_differences: (outfit.important_differences as string[]) || [],
+      reason_short: (outfit.reason_short as string) || '',
+      risks: (outfit.risks as string[]) || [],
+      items: ((outfit.item_ids as string[]) || []).map(id => {
         const item = wardrobeItems.find(i => i.id === id);
         return item ? {
           id: item.id,

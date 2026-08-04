@@ -13,7 +13,14 @@ export type ClothingSlot =
   | 'outerwear'  // 外套
   | 'shoes'      // 鞋
   | 'bag'        // 包
-  | 'accessory'; // 配饰
+  | 'accessory'  // 配饰
+  | '上装'
+  | '下装'
+  | '连体'
+  | '外套'
+  | '鞋'
+  | '包'
+  | '配饰';
 
 // 品类到槽位的映射
 export const CATEGORY_TO_SLOT: Record<string, ClothingSlot> = {
