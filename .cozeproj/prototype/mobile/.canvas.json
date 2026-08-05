@@ -1,0 +1,12 @@
+{
+  "elements": [
+    {
+      "type": "html",
+      "options": {
+        "path": ".cozeproj/prototype/mobile/ai-styling.html"
+      },
+      "title": "搭配页优化原型",
+      "size": "mobile"
+    }
+  ]
+}

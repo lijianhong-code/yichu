@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* === 品牌色 - 矿物绿 === */
+      --color-primary:              #2F6B57;
+      --color-primary-container:    #E7F0EB;
+      --color-on-primary:           #ffffff;
+      /* === AI 辅助色 - 暖珊瑚 === */
+      --color-ai:                   #E76F51;
+      --color-ai-container:         #FCECE8;
+      --color-on-ai:                #A94432;
+      /* === 背景 / 表面 - 中性灰调 === */
+      --color-background:           #F7F8F6;
+      --color-surface-container-lowest: #FFFFFF;
+      --color-surface:              #F0F2EF;
+      --color-surface-container:    #ECEFEB;
+      --color-surface-container-high: #E4E7E3;
+      --color-surface-container-highest: #DDE2DD;
+      /* === 文字 === */
+      --color-on-surface:           #181C1A;
+      --color-on-surface-variant:   #5D665F;
+      /* === 功能色 === */
+      --color-success:  #2F6B57;
+      --color-error:    #B84040;
+      --color-warning:  #966414;
+      /* === 边框 === */
+      --color-outline:          #DDE2DD;
+      --color-outline-variant:  #DDE2DD;
+      /* === 圆角 === */
+      --radius-sm:   0.25rem;
+      --radius-md:   0.375rem;
+      --radius-lg:   0.5rem;
+      --radius-xl:   0.75rem;
+      --radius-2xl:  1rem;
+      --radius-full: 9999px;
+      /* === 阴影 === */
+      --shadow-card:   0 2px 8px rgba(0,0,0,0.06);
+      --shadow-float:  0 8px 24px rgba(0,0,0,0.10);
+      --shadow-dialog: 0 20px 40px rgba(0,0,0,0.15);
+      /* === 字体 === */
+      --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+  </style>
+
+  <style>
+    body {
+      min-height: max(812px, 100dvh);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    /* 自定义动画 */
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .animate-pulse-soft {
+      animation: pulse-soft 2s ease-in-out infinite;
+    }
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #ECEFEB 25%, #E4E7E3 50%, #ECEFEB 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+    /* AI 图标呼吸动效 */
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+    .animate-breathe {
+      animation: breathe 3s ease-in-out infinite;
+    }
+    /* 脉冲动画 */
+    @keyframes ai-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(47,107,87,0.25); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(47,107,87,0); }
+    }
+    .animate-ai-pulse {
+      animation: ai-pulse 2s ease-in-out infinite;
+    }
+    /* 进度条渐变动画 */
+    @keyframes progress-fill {
+      0% { width: 0%; }
+      100% { width: 68%; }
+    }
+    .animate-progress {
+      animation: progress-fill 2s ease-out forwards;
+    }
+    /* 控制点闪烁 */
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .animate-dot-pulse {
+      animation: dot-pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+
+  <!-- 图片兜底 -->
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <main class="overflow-y-auto">
+    <!-- @main-content:start -->
+
+    <!-- ========== 状态切换器（原型演示用） ========== -->
+    <div id="state-switcher" class="sticky top-0 z-50 bg-surface-container-lowest border-b border-outline/10 px-3 py-2 flex gap-1.5">
+      <button id="tab-empty" class="flex-1 py-2 rounded-lg text-[13px] font-medium text-on-surface-variant transition-colors bg-transparent">空状态</button>
+      <button id="tab-loading" class="flex-1 py-2 rounded-lg text-[13px] font-medium text-on-surface-variant transition-colors bg-transparent">加载态</button>
+      <button id="tab-preview" class="flex-1 py-2 rounded-lg text-[13px] font-medium transition-colors bg-primary text-on-primary">预览态</button>
+      <button id="tab-edit" class="flex-1 py-2 rounded-lg text-[13px] font-medium text-on-surface-variant transition-colors bg-transparent">编辑态</button>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- 状态 1：空状态                                                     -->
+    <!-- ================================================================ -->
+    <div id="state-empty" class="hidden px-5 pt-10 pb-8 flex flex-col items-center text-center">
+
+      <!-- AI 动态图标（呼吸动效） -->
+      <div class="w-20 h-20 rounded-2xl bg-primary-container flex items-center justify-center mb-6 animate-breathe">
+        <i data-lucide="sparkles" class="w-9 h-9 text-primary"></i>
+      </div>
+
+      <!-- 标题 -->
+      <h1 class="text-xl font-bold text-on-surface mb-2">今天想穿什么？</h1>
+
+      <!-- 副标题 -->
+      <p class="text-sm text-on-surface-variant mb-8">描述场景，AI 帮你搭配</p>
+
+      <!-- 输入框（带参考图上传按钮） -->
+      <div class="w-full relative mb-5">
+        <button id="btn-attach-ref" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-on-surface-variant/60 rounded-lg hover:bg-surface-container transition-colors">
+          <i data-lucide="paperclip" class="w-5 h-5"></i>
+        </button>
+        <input id="input-scene" type="text" placeholder="描述你的穿搭需求..."
+               class="w-full bg-surface-container border-none rounded-xl pl-12 pr-12 py-3.5 text-base text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"/>
+        <button id="btn-voice-input" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-on-surface-variant/60 rounded-lg hover:bg-surface-container transition-colors">
+          <i data-lucide="mic" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 快捷场景标签 -->
+      <div class="flex gap-2.5 mb-8">
+        <!-- 场景1：上班通勤 -->
+        <button class="scene-btn px-4 py-2 rounded-full bg-surface-container text-sm text-on-surface-variant hover:bg-surface-container-high active:scale-[0.97] transition-all">
+          ☀️ 上班通勤
+        </button>
+        <!-- 场景2：约会 -->
+        <button class="scene-btn px-4 py-2 rounded-full bg-surface-container text-sm text-on-surface-variant hover:bg-surface-container-high active:scale-[0.97] transition-all">
+          🌸 约会
+        </button>
+        <!-- 场景3：旅行 -->
+        <button class="scene-btn px-4 py-2 rounded-full bg-surface-container text-sm text-on-surface-variant hover:bg-surface-container-high active:scale-[0.97] transition-all">
+          ✈️ 旅行
+        </button>
+      </div>
+
+      <!-- 两个主入口按钮 -->
+      <div class="w-full flex gap-3">
+        <button id="btn-ai-style" class="flex-1 bg-primary text-on-primary py-3.5 rounded-xl text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2 shadow-card">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+          AI 帮我搭
+        </button>
+        <button id="btn-manual-style" class="flex-1 bg-surface-container text-on-surface-variant border-none py-3.5 rounded-xl text-base font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2">
+          <i data-lucide="shirt" class="w-5 h-5"></i>
+          手动搭一套
+        </button>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- 状态 2：加载态                                                     -->
+    <!-- ================================================================ -->
+    <div id="state-loading" class="hidden px-5 pt-10 pb-8 flex flex-col items-center">
+
+      <!-- AI 大脑图标（脉冲动画） -->
+      <div class="w-20 h-20 rounded-full bg-primary-container flex items-center justify-center mb-6 animate-ai-pulse">
+        <i data-lucide="brain" class="w-10 h-10 text-primary"></i>
+      </div>
+
+      <!-- 进度条 + 百分比 -->
+      <div class="w-full mb-2">
+        <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div id="progress-bar" class="h-full rounded-full animate-progress" style="width: 68%; background: linear-gradient(90deg, #2F6B57, #3D8B6E);"></div>
+        </div>
+      </div>
+      <p id="progress-text" class="text-sm font-medium text-primary mb-8 self-end">68%</p>
+
+      <!-- 4个步骤 -->
+      <div class="w-full flex items-center justify-between mb-10 px-1">
+        <!-- 步骤1：理解场合（已完成） -->
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            <i data-lucide="check" class="w-4 h-4 text-on-primary"></i>
+          </div>
+          <span class="text-[11px] text-primary font-medium">理解场合</span>
+        </div>
+        <!-- 连接线 -->
+        <div class="flex-1 h-0.5 bg-primary mx-1 mt-[-14px]"></div>
+        <!-- 步骤2：筛选衣物（已完成） -->
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            <i data-lucide="check" class="w-4 h-4 text-on-primary"></i>
+          </div>
+          <span class="text-[11px] text-primary font-medium">筛选衣物</span>
+        </div>
+        <!-- 连接线 -->
+        <div class="flex-1 h-0.5 bg-primary mx-1 mt-[-14px]"></div>
+        <!-- 步骤3：生成方案（进行中） -->
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center ring-2 ring-primary/30">
+            <i data-lucide="loader" class="w-4 h-4 text-primary animate-spin"></i>
+          </div>
+          <span class="text-[11px] text-primary font-semibold">生成方案</span>
+        </div>
+        <!-- 连接线 -->
+        <div class="flex-1 h-0.5 bg-surface-container-high mx-1 mt-[-14px]"></div>
+        <!-- 步骤4：优化细节（待执行） -->
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+            <i data-lucide="circle" class="w-4 h-4 text-on-surface-variant/40"></i>
+          </div>
+          <span class="text-[11px] text-on-surface-variant">优化细节</span>
+        </div>
+      </div>
+
+      <!-- 三套方案骨架屏 -->
+      <p class="text-xs text-on-surface-variant mb-3 self-start font-medium">正在生成 3 套方案...</p>
+      <div class="w-full flex gap-3">
+        <!-- 骨架屏-方案1 -->
+        <div class="flex-1 rounded-xl overflow-hidden shadow-card">
+          <div class="skeleton-shimmer h-36 bg-surface-container"></div>
+          <div class="p-2.5 bg-surface-container-lowest">
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container mb-2"></div>
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container w-2/3"></div>
+          </div>
+        </div>
+        <!-- 骨架屏-方案2 -->
+        <div class="flex-1 rounded-xl overflow-hidden shadow-card">
+          <div class="skeleton-shimmer h-36 bg-surface-container" style="animation-delay: 0.2s"></div>
+          <div class="p-2.5 bg-surface-container-lowest">
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container mb-2" style="animation-delay: 0.2s"></div>
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container w-2/3" style="animation-delay: 0.2s"></div>
+          </div>
+        </div>
+        <!-- 骨架屏-方案3 -->
+        <div class="flex-1 rounded-xl overflow-hidden shadow-card">
+          <div class="skeleton-shimmer h-36 bg-surface-container" style="animation-delay: 0.4s"></div>
+          <div class="p-2.5 bg-surface-container-lowest">
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container mb-2" style="animation-delay: 0.4s"></div>
+            <div class="skeleton-shimmer h-3 rounded bg-surface-container w-2/3" style="animation-delay: 0.4s"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- 状态 3：预览态                                                     -->
+    <!-- ================================================================ -->
+    <div id="state-preview" class="px-4 pt-4 pb-6">
+
+      <!-- 顶部：方案名称 + 切换指示 -->
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="scheme-name" class="text-lg font-bold text-on-surface">通勤优雅风</h2>
+        <div id="scheme-indicator" class="flex items-center gap-1.5 bg-surface-container px-3 py-1.5 rounded-full">
+          <span class="text-sm font-semibold text-primary">1</span>
+          <span class="text-sm text-on-surface-variant">/</span>
+          <span class="text-sm text-on-surface-variant">3</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-on-surface-variant ml-0.5"></i>
+        </div>
+      </div>
+
+      <!-- 中心：大画布预览区域 -->
+      <div id="preview-canvas" class="w-full bg-surface rounded-2xl shadow-card overflow-hidden mb-4">
+        <!--  outfits 平铺展示区 -->
+        <div class="px-5 pt-5 pb-3">
+          <div class="flex gap-3 items-start">
+            <!-- 单品1：西装外套 -->
+            <div class="flex-1">
+              <div class="w-full aspect-[3/4] rounded-xl bg-[#C4A882] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+                <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent"></div>
+                <i data-lucide="shirt" class="w-7 h-7 text-white/80"></i>
+                <span class="text-[11px] text-white/90 font-medium mt-0.5">西装外套</span>
+              </div>
+            </div>
+            <!-- 单品2：吊带背心 -->
+            <div class="flex-1">
+              <div class="w-full aspect-[3/4] rounded-xl bg-[#F5E6D0] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+                <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent"></div>
+                <i data-lucide="shirt" class="w-7 h-7 text-[#8B7355]/70"></i>
+                <span class="text-[11px] text-[#8B7355] font-medium mt-0.5">吊带背心</span>
+              </div>
+            </div>
+            <!-- 单品3：阔腿裤 -->
+            <div class="flex-1">
+              <div class="w-full aspect-[3/4] rounded-xl bg-[#4A5568] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+                <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent"></div>
+                <i data-lucide="shirt" class="w-7 h-7 text-white/70"></i>
+                <span class="text-[11px] text-white/80 font-medium mt-0.5">阔腿裤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 搭配信息栏 -->
+        <div class="px-5 pb-4 pt-1 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-on-surface-variant">3 件单品</span>
+            <span class="w-1 h-1 rounded-full bg-outline"></span>
+            <span class="text-xs text-on-surface-variant">适合 22°C</span>
+          </div>
+          <div class="flex items-center gap-1 text-ai">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span class="text-xs font-medium">AI 推荐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 候选方案：横向3个卡片 -->
+      <div id="candidate-cards" class="flex gap-2.5 mb-4">
+        <!-- 候选方案1（选中态） -->
+        <div id="candidate-1" class="flex-1 rounded-xl overflow-hidden shadow-card ring-2 ring-primary cursor-pointer transition-all">
+          <div class="h-20 bg-surface-container flex items-center justify-center gap-1 px-2">
+            <div class="w-5 h-7 rounded bg-[#C4A882]"></div>
+            <div class="w-5 h-7 rounded bg-[#F5E6D0]"></div>
+            <div class="w-5 h-7 rounded bg-[#4A5568]"></div>
+          </div>
+          <div class="px-2 py-1.5 bg-surface-container-lowest">
+            <p class="text-[11px] font-semibold text-on-surface truncate">通勤优雅风</p>
+          </div>
+        </div>
+        <!-- 候选方案2 -->
+        <div id="candidate-2" class="flex-1 rounded-xl overflow-hidden shadow-card ring-1 ring-outline/20 cursor-pointer transition-all">
+          <div class="h-20 bg-surface-container flex items-center justify-center gap-1 px-2">
+            <div class="w-5 h-7 rounded bg-[#D4E4D9]"></div>
+            <div class="w-5 h-7 rounded bg-[#FFFFFF]"></div>
+            <div class="w-5 h-7 rounded bg-[#8B9DAF]"></div>
+          </div>
+          <div class="px-2 py-1.5 bg-surface-container-lowest">
+            <p class="text-[11px] font-medium text-on-surface-variant truncate">清新文艺风</p>
+          </div>
+        </div>
+        <!-- 候选方案3 -->
+        <div id="candidate-3" class="flex-1 rounded-xl overflow-hidden shadow-card ring-1 ring-outline/20 cursor-pointer transition-all">
+          <div class="h-20 bg-surface-container flex items-center justify-center gap-1 px-2">
+            <div class="w-5 h-7 rounded bg-[#2D3748]"></div>
+            <div class="w-5 h-7 rounded bg-[#E8D5C4]"></div>
+            <div class="w-5 h-7 rounded bg-[#1A202C]"></div>
+          </div>
+          <div class="px-2 py-1.5 bg-surface-container-lowest">
+            <p class="text-[11px] font-medium text-on-surface-variant truncate">干练极简风</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搭配理由卡片（AI辅助色背景） -->
+      <div id="reason-card" class="bg-ai-container rounded-xl p-4 mb-5">
+        <div class="flex items-center gap-1.5 mb-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-ai"></i>
+          <span class="text-sm font-semibold text-on-ai">搭配理由</span>
+        </div>
+        <p class="text-sm text-on-surface leading-relaxed">
+          西装外套搭配吊带背心，兼顾正式感与透气性。阔腿裤修饰腿型的同时保持舒适度，适合 22°C 的春秋通勤天气。整体色调以大地色系为主，沉稳而不沉闷。
+        </p>
+      </div>
+
+      <!-- 主按钮：今天穿 -->
+      <button id="btn-wear-today" class="w-full bg-primary text-on-primary py-3.5 rounded-xl text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2 shadow-float mb-3">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+        今天穿这套
+      </button>
+
+      <!-- 次要操作 -->
+      <div class="flex items-center justify-center gap-5">
+        <button id="btn-edit-outfit" class="text-sm text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1 py-1">
+          <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+          编辑搭配
+        </button>
+        <span class="w-px h-3 bg-outline/30"></span>
+        <button id="btn-save-outfit" class="text-sm text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1 py-1">
+          <i data-lucide="bookmark" class="w-3.5 h-3.5"></i>
+          保存
+        </button>
+        <span class="w-px h-3 bg-outline/30"></span>
+        <button id="btn-more-options" class="text-sm text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1 py-1">
+          <i data-lucide="more-horizontal" class="w-3.5 h-3.5"></i>
+          更多
+        </button>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- 状态 4：编辑态                                                     -->
+    <!-- ================================================================ -->
+    <div id="state-edit" class="hidden flex flex-col" style="min-height: max(812px, 100dvh)">
+
+      <!-- 顶部栏：编辑搭配标题 + 完成按钮 -->
+      <div class="flex items-center justify-between px-4 h-14 shrink-0">
+        <h2 class="text-base font-semibold text-on-surface">编辑搭配</h2>
+        <button id="btn-edit-done" class="text-sm font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary-container transition-colors">
+          ✕ 完成
+        </button>
+      </div>
+
+      <!-- 中心：画布（可编辑） -->
+      <div class="flex-1 px-4 py-3 flex flex-col">
+        <div id="edit-canvas" class="flex-1 bg-surface rounded-2xl shadow-card relative flex items-center justify-center overflow-hidden min-h-[320px]">
+
+          <!-- 单品1：西装外套（未选中） -->
+          <div id="edit-item-1" class="absolute cursor-pointer transition-transform hover:scale-[1.02]" style="top: 12%; left: 8%; width: 36%;">
+            <div class="w-full aspect-[3/4] rounded-xl bg-[#C4A882] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+              <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent"></div>
+              <i data-lucide="shirt" class="w-6 h-6 text-white/80"></i>
+              <span class="text-[10px] text-white/90 font-medium">西装外套</span>
+            </div>
+          </div>
+
+          <!-- 单品2：吊带背心（选中态 - 显示控制点） -->
+          <div id="edit-item-2" class="absolute cursor-pointer" style="top: 18%; left: 34%; width: 32%;">
+            <!-- 选中边框 -->
+            <div class="absolute -inset-1.5 border-2 border-primary rounded-xl pointer-events-none"></div>
+            <!-- 控制点 - 四角 -->
+            <div class="absolute -top-2.5 -left-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary animate-dot-pulse pointer-events-none"></div>
+            <div class="absolute -top-2.5 -right-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary animate-dot-pulse pointer-events-none"></div>
+            <div class="absolute -bottom-2.5 -left-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary animate-dot-pulse pointer-events-none"></div>
+            <div class="absolute -bottom-2.5 -right-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary animate-dot-pulse pointer-events-none"></div>
+            <!-- 控制点 - 四边中点 -->
+            <div class="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-on-primary rounded-full border-2 border-primary pointer-events-none"></div>
+            <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-on-primary rounded-full border-2 border-primary pointer-events-none"></div>
+            <div class="absolute top-1/2 -translate-y-1/2 -left-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary pointer-events-none"></div>
+            <div class="absolute top-1/2 -translate-y-1/2 -right-2.5 w-3 h-3 bg-on-primary rounded-full border-2 border-primary pointer-events-none"></div>
+            <!-- 物品本体 -->
+            <div class="w-full aspect-[3/4] rounded-xl bg-[#F5E6D0] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+              <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent"></div>
+              <i data-lucide="shirt" class="w-6 h-6 text-[#8B7355]/70"></i>
+              <span class="text-[10px] text-[#8B7355] font-medium">吊带背心</span>
+            </div>
+          </div>
+
+          <!-- 单品3：阔腿裤（未选中） -->
+          <div id="edit-item-3" class="absolute cursor-pointer transition-transform hover:scale-[1.02]" style="top: 38%; right: 8%; width: 30%;">
+            <div class="w-full aspect-[3/4] rounded-xl bg-[#4A5568] shadow-card flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+              <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent"></div>
+              <i data-lucide="shirt" class="w-6 h-6 text-white/70"></i>
+              <span class="text-[10px] text-white/80 font-medium">阔腿裤</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 选中物品操作栏 -->
+      <div id="edit-toolbar" class="px-4 pb-3 shrink-0">
+        <div class="flex items-center justify-center gap-2 bg-surface-container-lowest rounded-xl shadow-card px-3 py-2.5">
+          <!-- 删除 -->
+          <button id="btn-edit-delete" class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+            <span class="text-[10px]">删除</span>
+          </button>
+          <!-- 锁定 -->
+          <button id="btn-edit-lock" class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+            <i data-lucide="lock" class="w-5 h-5"></i>
+            <span class="text-[10px]">锁定</span>
+          </button>
+          <!-- 恢复 -->
+          <button id="btn-edit-reset" class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+            <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            <span class="text-[10px]">恢复</span>
+          </button>
+          <!-- AI补全 -->
+          <button id="btn-edit-ai" class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg text-ai hover:bg-ai-container transition-colors">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+            <span class="text-[10px]">AI补全</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 底部：从衣橱添加按钮 -->
+      <div class="px-4 pb-6 shrink-0">
+        <button id="btn-add-from-wardrobe" class="w-full bg-surface-container text-on-surface-variant border-none py-3.5 rounded-xl text-base font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2">
+          <i data-lucide="plus" class="w-5 h-5"></i>
+          从衣橱添加
+        </button>
+      </div>
+    </div>
+
+    <!-- @main-content:end -->
+  </main>
+
+  <script>lucide.createIcons();</script>
+
+  <script>
+    $(function() {
+      // ========== 导航辅助函数 ==========
+      function navPush(route) {
+        console.log('[原型演示] PUSH 到: ' + route);
+        window.location.href = route;
+      }
+      function navReplace(route) {
+        console.log('[原型演示] REPLACE 为: ' + route);
+        window.location.replace(route);
+      }
+      function navReset(route) {
+        console.log('[原型演示] RESET 到: ' + route);
+        window.location.href = route;
+      }
+      function navBack() {
+        console.log('[原型演示] BACK 返回上一页');
+        if(window.history.length > 1) window.history.back();
+      }
+
+      // ========== 状态切换逻辑 ==========
+      var states = ['empty', 'loading', 'preview', 'edit'];
+      var tabs = {
+        empty: '#tab-empty',
+        loading: '#tab-loading',
+        preview: '#tab-preview',
+        edit: '#tab-edit'
+      };
+
+      function switchState(name) {
+        // 隐藏所有状态面板
+        $.each(states, function(_, s) {
+          $('#state-' + s).addClass('hidden');
+          $(tabs[s])
+            .removeClass('bg-primary text-on-primary font-semibold')
+            .addClass('text-on-surface-variant bg-transparent');
+        });
+        // 显示目标状态
+        $('#state-' + name).removeClass('hidden');
+        $(tabs[name])
+          .removeClass('text-on-surface-variant bg-transparent')
+          .addClass('bg-primary text-on-primary font-semibold');
+        // 重新渲染 Lucide 图标（DOM 切换后需要重新注入 SVG）
+        lucide.createIcons();
+      }
+
+      $('#tab-empty').on('click', function() { switchState('empty'); });
+      $('#tab-loading').on('click', function() { switchState('loading'); });
+      $('#tab-preview').on('click', function() { switchState('preview'); });
+      $('#tab-edit').on('click', function() { switchState('edit'); });
+
+      // ========== 空状态交互 ==========
+
+      // 快捷场景按钮 - 点击填入输入框
+      $('.scene-btn').on('click', function() {
+        var text = $(this).text().trim();
+        $('#input-scene').val(text);
+        console.log('选择场景:', text);
+      });
+
+      // 参考图上传按钮
+      // 后续应实现：
+      // 1. 点击后弹出底部选择面板，提供"拍照"和"从相册选择"两个选项
+      // 2. 拍照：调用 wx.chooseMedia 接口，sourceType 为 ['camera']
+      // 3. 相册选择：调用 wx.chooseMedia 接口，sourceType 为 ['album']，maxCount 为 1
+      // 4. 选择完成后将图片缩略图显示在输入框左侧的附件区域
+      // 5. 支持预览已选图片和删除已选图片
+      $('#btn-attach-ref').on('click', function() {
+        console.log('需要实现参考图上传功能');
+      });
+
+      // 语音输入按钮
+      // 后续应实现：
+      // 1. 点击后开始录音，按钮图标切换为"录音中"状态（红色脉冲动画）
+      // 2. 调用微信录音接口 wx.getRecorderManager
+      // 3. 录音结束后调用语音识别 API 将语音转为文字
+      // 4. 将识别结果填入输入框
+      // 5. 再次点击停止录音
+      $('#btn-voice-input').on('click', function() {
+        console.log('需要实现语音输入功能');
+      });
+
+      // AI 帮我搭 - 跳转到加载态
+      $('#btn-ai-style').on('click', function() {
+        switchState('loading');
+        console.log('开始 AI 搭配生成');
+      });
+
+      // 手动搭一套 - 跳转到编辑态
+      $('#btn-manual-style').on('click', function() {
+        switchState('edit');
+        console.log('进入手动搭配模式');
+      });
+
+      // ========== 预览态交互 ==========
+
+      // 候选方案卡片切换选中态
+      $('#candidate-cards').on('click', '[id^="candidate-"]', function() {
+        // 移除所有卡片的选中样式
+        $('#candidate-cards [id^="candidate-"]').each(function() {
+          $(this)
+            .removeClass('ring-2 ring-primary')
+            .addClass('ring-1 ring-outline/20');
+          $(this).find('p').removeClass('text-on-surface font-semibold').addClass('text-on-surface-variant font-medium');
+        });
+        // 设置当前卡片为选中
+        $(this)
+          .removeClass('ring-1 ring-outline/20')
+          .addClass('ring-2 ring-primary');
+        $(this).find('p').removeClass('text-on-surface-variant font-medium').addClass('text-on-surface font-semibold');
+        console.log('选择方案:', this.id);
+      });
+
+      // 方案切换指示器 - 点击切换下一个方案
+      // 后续应实现：
+      // 1. 点击后切换到下一套方案（循环切换 1→2→3→1）
+      // 2. 更新大画布预览区域的内容为对应方案的搭配
+      // 3. 更新方案名称和指示器中的数字
+      // 4. 更新搭配理由文案
+      // 5. 添加左右滑动切换手势支持
+      $('#scheme-indicator').on('click', function() {
+        console.log('切换到下一套方案');
+      });
+
+      // 编辑搭配 - 跳转到编辑态
+      $('#btn-edit-outfit').on('click', function() {
+        switchState('edit');
+      });
+
+      // 今天穿这套
+      // 后续应实现：
+      // 1. 弹出确认弹窗，展示今日天气和穿搭建议
+      // 2. 确认后将该搭配记录到日历中当天
+      // 3. 显示成功提示 toast
+      // 4. 可选跳转到日历页面查看
+      $('#btn-wear-today').on('click', function() {
+        console.log('确认今天穿这套搭配');
+      });
+
+      // 保存搭配
+      // 后续应实现：
+      // 1. 将当前搭配保存到"我的收藏"列表
+      // 2. 弹出输入框让用户输入收藏名称（默认为方案名）
+      // 3. 保存成功后显示 toast 提示
+      $('#btn-save-outfit').on('click', function() {
+        console.log('保存当前搭配方案');
+      });
+
+      // 更多操作
+      // 后续应实现：
+      // 1. 弹出底部操作面板
+      // 2. 提供选项：分享给好友、生成穿搭海报、查看相似搭配、反馈不喜欢
+      $('#btn-more-options').on('click', function() {
+        console.log('显示更多操作选项');
+      });
+
+      // ========== 编辑态交互 ==========
+
+      // 完成编辑 - 返回预览态
+      $('#btn-edit-done').on('click', function() {
+        switchState('preview');
+      });
+
+      // 编辑画布中的物品点击 - 切换选中状态
+      // 后续应实现完整的拖拽和缩放交互：
+      // 1. 点击物品：选中该物品，显示控制点边框，取消其他物品的选中
+      // 2. 拖拽移动：按住物品后可自由拖动改变位置（使用 touch 事件）
+      // 3. 角落控制点拖拽：等比缩放物品大小
+      // 4. 边中点拖拽：单向拉伸（上/下边垂直拉伸，左/右边水平拉伸）
+      // 5. 双击物品：取消选中状态
+      // 6. 选中物品时图层置顶（z-index 提升）
+      $('#edit-canvas').on('click', '[id^="edit-item-"]', function(e) {
+        e.stopPropagation();
+        console.log('选中物品:', this.id);
+      });
+
+      // 点击画布空白区域取消选中
+      // 后续应实现：取消所有物品的选中状态，隐藏控制点
+      $('#edit-canvas').on('click', function(e) {
+        if ($(e.target).closest('[id^="edit-item-"]').length === 0) {
+          console.log('取消选中所有物品');
+        }
+      });
+
+      // 删除按钮
+      // 后续应实现：
+      // 1. 点击后删除当前选中的物品
+      // 2. 删除前弹出确认提示（可选）
+      // 3. 删除后画布中移除该物品节点
+      // 4. 如果删除的是最后一个物品，提示"至少保留一件单品"
+      $('#btn-edit-delete').on('click', function() {
+        console.log('删除选中物品');
+      });
+
+      // 锁定按钮
+      // 后续应实现：
+      // 1. 点击后锁定/解锁当前选中物品
+      // 2. 锁定后物品不可拖拽和缩放，图标切换为锁定状态
+      // 3. 解锁后恢复可编辑状态
+      // 4. 锁定物品显示锁定标记（半透明锁图标覆盖层）
+      $('#btn-edit-lock').on('click', function() {
+        console.log('锁定/解锁选中物品');
+      });
+
+      // 恢复按钮
+      // 后续应实现：
+      // 1. 点击后将选中物品恢复到 AI 生成的原始位置和大小
+      // 2. 支持撤销多步操作（维护操作历史栈）
+      // 3. 恢复时添加过渡动画
+      $('#btn-edit-reset').on('click', function() {
+        console.log('恢复选中物品到原始状态');
+      });
+
+      // AI 补全按钮
+      // 后续应实现：
+      // 1. 点击后调用 AI 接口，基于当前搭配方案推荐补充单品
+      // 2. 例如：当前有上衣和裤子，AI 推荐合适的鞋子和配饰
+      // 3. 推荐结果以动画形式添加到画布中
+      // 4. 用户可接受或拒绝 AI 推荐
+      $('#btn-edit-ai').on('click', function() {
+        console.log('AI 智能补全搭配');
+      });
+
+      // 从衣橱添加
+      // 后续应实现：
+      // 1. 点击后从底部弹出衣橱选择面板
+      // 2. 面板中展示用户衣橱中所有衣物（按分类分组：上装/下装/鞋/配饰）
+      // 3. 支持搜索和筛选
+      // 4. 选择衣物后添加到画布中，自动放置在合适位置
+      // 5. 新添加的衣物默认为选中状态
+      $('#btn-add-from-wardrobe').on('click', function() {
+        console.log('打开衣橱选择面板');
+      });
+    });
+  </script>
+
+</body>
+
+</html>
