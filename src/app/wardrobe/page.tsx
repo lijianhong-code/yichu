@@ -352,72 +352,69 @@ export default function WardrobePage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 {outfits.map((outfit) => {
                   const wearLog = getOutfitWearLog(outfit.id);
                   return (
                     <button
                       key={outfit.id}
                       onClick={() => setSelectedOutfit(outfit)}
-                      className="w-full group relative rounded-xl bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.99] card-interactive text-left"
+                      className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
                     >
-                      <div className="flex">
-                        {/* Outfit items preview */}
-                        <div className="flex shrink-0 p-3 pr-0">
-                          <div className="flex -space-x-2">
-                            {outfit.items.slice(0, 3).map((item, idx) => (
+                      {/* Image area - 4:5 ratio with stacked items preview */}
+                      <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden flex items-center justify-center">
+                        {/* Stacked items preview */}
+                        <div className="relative w-full h-full">
+                          {outfit.items.slice(0, 3).map((item, idx) => {
+                            const totalItems = Math.min(outfit.items.length, 3);
+                            const scale = 1 - idx * 0.15;
+                            const offsetY = idx * 8;
+                            const zIndex = totalItems - idx;
+                            return (
                               <div
                                 key={item.id}
-                                className="h-16 w-16 rounded-lg bg-muted/40 overflow-hidden border-2 border-background"
-                                style={{ zIndex: 3 - idx }}
+                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden border-2 border-background shadow-md"
+                                style={{
+                                  width: `${65 - idx * 10}%`,
+                                  height: `${65 - idx * 10}%`,
+                                  zIndex,
+                                  transform: `translate(-50%, -50%) scale(${scale}) translateY(${offsetY}%)`,
+                                }}
                               >
                                 <img
                                   src={item.imageUrl}
                                   alt={item.name}
-                                  className="h-full w-full object-cover"
+                                  className="w-full h-full object-cover"
                                 />
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
                         </div>
-                        {/* Outfit info */}
-                        <div className="flex-1 p-3 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {outfit.name}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                  <Tag className="h-2.5 w-2.5" />
-                                  {outfit.occasion}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                  <Calendar className="h-2.5 w-2.5" />
-                                  {outfit.season}
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5" />
+                        {/* Item count badge */}
+                        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] font-medium text-foreground/70">
+                          {outfit.items.length}件
+                        </div>
+                        {/* AI badge */}
+                        {outfit.source === 'ai_text' && (
+                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-ai-50 text-[10px] font-medium text-ai-600 flex items-center gap-0.5">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            AI
                           </div>
-                          {/* Meta info */}
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="text-[10px] text-muted-foreground">
-                              {outfit.items.length} 件单品
-                            </span>
-                            {wearLog && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                <Clock className="h-2.5 w-2.5" />
-                                上次 {wearLog.date.slice(5)}
-                              </span>
-                            )}
-                            {outfit.source === 'ai_text' && (
-                              <span className="text-[10px] text-ai-600 flex items-center gap-0.5">
-                                <Sparkles className="h-2.5 w-2.5" />
-                                AI
-                              </span>
-                            )}
-                          </div>
+                        )}
+                        {/* Subtle gradient overlay on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      {/* Info */}
+                      <div className="p-2.5">
+                        <p className="text-xs font-medium text-foreground truncate">{outfit.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground truncate">{outfit.occasion}</span>
+                          {wearLog && (
+                            <>
+                              <span className="text-[10px] text-muted-foreground">·</span>
+                              <span className="text-[10px] text-muted-foreground truncate">上次{wearLog.date.slice(5)}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </button>
