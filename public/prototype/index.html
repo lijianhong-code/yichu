@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>搭配页优化原型</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-header .badge {
+      background: #2F6B57;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .card-header h2 {
+      font-size: 16px;
+      color: #1a1a1a;
+    }
+    .card-body {
+      padding: 16px;
+    }
+    .card-body img {
+      width: 100%;
+      border-radius: 8px;
+      display: block;
+    }
+    .card-desc {
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+      color: #666;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .card-desc ul {
+      margin-top: 8px;
+      padding-left: 18px;
+    }
+    .card-desc li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>搭配页 UI 优化原型</h1>
+  <p class="subtitle">AI 智慧衣橱 - 搭配页面 4 个状态的设计优化方案</p>
+  
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">状态 1</span>
+        <h2>空状态</h2>
+      </div>
+      <div class="card-body">
+        <img src="/prototype/styling-empty-state.jpeg" alt="空状态">
+      </div>
+      <div class="card-desc">
+        <strong>优化要点：</strong>
+        <ul>
+          <li>AI 图标加呼吸动效，增强"智能"感知</li>
+          <li>参考图按钮移入输入框内（OpenAI 风格）</li>
+          <li>快捷场景改为图标+文字胶囊按钮</li>
+          <li>双入口按钮并排，主次分明</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">状态 2</span>
+        <h2>加载态</h2>
+      </div>
+      <div class="card-body">
+        <img src="/prototype/styling-loading-state.jpeg" alt="加载态">
+      </div>
+      <div class="card-desc">
+        <strong>优化要点：</strong>
+        <ul>
+          <li>AI 大脑图标 + 脉冲动画</li>
+          <li>品牌色渐变进度条</li>
+          <li>4 步骤流程可视化</li>
+          <li>骨架屏显示方案轮廓</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">状态 3</span>
+        <h2>预览态</h2>
+      </div>
+      <div class="card-body">
+        <img src="/prototype/styling-preview-state.jpeg" alt="预览态">
+      </div>
+      <div class="card-desc">
+        <strong>优化要点：</strong>
+        <ul>
+          <li>画布区域增大，展示完整搭配</li>
+          <li>候选方案改为横向卡片（更清晰）</li>
+          <li>搭配理由独立卡片（AI 辅助色背景）</li>
+          <li>"今天穿"作为主按钮突出显示</li>
+          <li>次要操作改为文字链接</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">状态 4</span>
+        <h2>编辑态</h2>
+      </div>
+      <div class="card-body">
+        <img src="/prototype/styling-editing-state.jpeg" alt="编辑态">
+      </div>
+      <div class="card-desc">
+        <strong>优化要点：</strong>
+        <ul>
+          <li>顶部简化为标题 + 完成按钮</li>
+          <li>工具栏仅在选中物品时显示</li>
+          <li>"从衣橱添加"独立成按钮</li>
+          <li>减少视觉干扰，专注编辑</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
