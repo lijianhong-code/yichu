@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
           { type: 'text', text: '请分析这张参考图中的服装搭配：' },
           { type: 'image_url', image_url: { url: imageUrl } },
           { type: 'text', text: ANALYZE_PROMPT }
-        ] as any
+        ] as Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
       },
     ];
 

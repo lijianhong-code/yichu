@@ -726,6 +726,27 @@ export const weatherContext = {
   uvIndex: 5,
 };
 
+// Type aliases for backward compatibility
+export type ClothingItem = WardrobeItem;
+export type ClothingStatus = WardrobeItem['status'];
+export type ClothingCategory = string;
+
+// Initial data aliases
+export const initialWardrobeItems = wardrobeItems;
+export const initialOutfits = outfits;
+
+// Categories list
+export const CATEGORIES = [
+  { key: 'all', label: '全部' },
+  { key: '上装', label: '上装' },
+  { key: '下装', label: '下装' },
+  { key: '外套', label: '外套' },
+  { key: '连体', label: '连体' },
+  { key: '鞋', label: '鞋' },
+  { key: '包', label: '包' },
+  { key: '配饰', label: '配饰' },
+];
+
 // Today's recommended outfit
 export const todayOutfit: Outfit = {
   id: 'today-001',

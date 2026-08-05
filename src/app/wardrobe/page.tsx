@@ -1,38 +1,27 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Search,
-  SlidersHorizontal,
   Plus,
-  Camera,
-  Image as ImageIcon,
-  Shirt,
   X,
-  MoreHorizontal,
+  ChevronDown,
+  Shirt,
+  Sparkles,
   Edit3,
   Trash2,
-  Package,
+  MoreVertical,
+  Camera,
+  Image as ImageIcon,
   Heart,
-  Calendar,
-  Eye,
-  Sparkles,
-  Layers,
-  ChevronRight,
+  Hand,
   Clock,
-  Tag,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -40,80 +29,65 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
-  wardrobeItems,
-  categories,
-  outfits,
-  wearLogs,
-} from '@/lib/mock-data';
-import type { WardrobeItem, Outfit } from '@/lib/mock-data';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useWardrobe } from '@/lib/store';
+import { toast } from '@/lib/toast';
+import { type ClothingItem, type ClothingStatus, type ClothingCategory, CATEGORIES } from '@/lib/mock-data';
 
-type ViewMode = 'items' | 'outfits';
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  available: { label: '可用', color: 'bg-muted text-muted-foreground', icon: Shirt },
+  wearing: { label: '穿着中', color: 'bg-primary/10 text-primary', icon: Heart },
+  washing: { label: '洗衣中', color: 'bg-info-bg text-info', icon: Hand },
+  lent: { label: '已借出', color: 'bg-warning-bg text-warning', icon: Clock },
+  pending_review: { label: '待确认', color: 'bg-accent text-accent-foreground', icon: AlertTriangle },
+};
 
 export default function WardrobePage() {
-  const router = useRouter();
-  const [viewMode, setViewMode] = useState<ViewMode>('items');
+  const { state, addItem, updateItem, deleteItem, getStats } = useWardrobe();
+  const wardrobeItems = state.items;
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
-  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const [showFilter, setShowFilter] = useState(false);
-  const [showItemActions, setShowItemActions] = useState(false);
-  const [itemStatus, setItemStatus] = useState<Record<string, WardrobeItem['status']>>({});
-  const [uploadedItems, setUploadedItems] = useState<WardrobeItem[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [editFormData, setEditFormData] = useState<Partial<WardrobeItem>>({});
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'items' | 'outfits'>('items');
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<ClothingItem | null>(null);
+  const [editItem, setEditItem] = useState<ClothingItem | null>(null);
+  const [uploadedItems, setUploadedItems] = useState<ClothingItem[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
 
-  // Handle file upload (simulates AI recognition)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    // Simulate AI processing delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const newItems: WardrobeItem[] = Array.from(files).map((file, index) => {
-      const itemId = `uploaded-${Date.now()}-${index}`;
-      // Create a local URL for the uploaded image
-      const imageUrl = URL.createObjectURL(file);
-      // Generate a mock item based on file name
-      const fileName = file.name.replace(/\.[^/.]+$/, '');
-      return {
-        id: itemId,
-        name: fileName || `新衣物 ${index + 1}`,
-        category: '上装',
-        subCategory: 'T恤',
-        primaryColor: '#808080',
-        colors: ['灰色'],
-        season: ['春夏', '秋冬'],
-        occasions: ['日常'],
-        style: ['简约'],
-        material: '棉',
-        pattern: '纯色',
-        status: 'available' as const,
-        wearCount: 0,
-        lastWorn: '',
-        imageUrl,
-        addedAt: new Date().toISOString().split('T')[0],
-      };
+  // Item counts per category
+  const itemCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: wardrobeItems.length };
+    wardrobeItems.forEach((item) => {
+      counts[item.category] = (counts[item.category] || 0) + 1;
     });
+    return counts;
+  }, [wardrobeItems]);
 
-    setUploadedItems((prev) => [...newItems, ...prev]);
-    setUploading(false);
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
+  // Filtered items
   const filteredItems = useMemo(() => {
-    let items = [...wardrobeItems, ...uploadedItems];
+    let items = wardrobeItems;
     if (activeCategory !== 'all') {
       items = items.filter((item) => item.category === activeCategory);
     }
@@ -122,853 +96,566 @@ export default function WardrobePage() {
       items = items.filter(
         (item) =>
           item.name.toLowerCase().includes(q) ||
-          item.category.toLowerCase().includes(q) ||
-          item.colors.some((c) => c.toLowerCase().includes(q))
+          item.primaryColor.toLowerCase().includes(q) ||
+          item.category.includes(q)
       );
     }
     return items;
-  }, [searchQuery, activeCategory, uploadedItems]);
+  }, [wardrobeItems, activeCategory, searchQuery]);
 
-  const itemCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: wardrobeItems.length };
-    wardrobeItems.forEach((item) => {
-      counts[item.category] = (counts[item.category] || 0) + 1;
-    });
-    return counts;
-  }, []);
+  // Mock outfits
+  const mockOutfits = useMemo(() => [
+    {
+      id: 'outfit-1',
+      name: '春日通勤',
+      items: wardrobeItems.slice(0, 3),
+      occasion: 'work' as const,
+      lastWorn: '2天前',
+      isAI: true,
+    },
+    {
+      id: 'outfit-2',
+      name: '周末约会',
+      items: wardrobeItems.slice(2, 5),
+      occasion: 'date' as const,
+      lastWorn: '5天前',
+      isAI: true,
+    },
+    {
+      id: 'outfit-3',
+      name: '运动休闲',
+      items: wardrobeItems.slice(4, 7),
+      occasion: 'casual' as const,
+      lastWorn: '1周前',
+      isAI: false,
+    },
+  ], [wardrobeItems]);
 
-  const getItemStatus = (item: WardrobeItem): WardrobeItem['status'] => {
-    return itemStatus[item.id] || item.status;
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsAnalyzing(true);
+    // Simulate AI recognition
+    setTimeout(() => {
+      const newItems: ClothingItem[] = files.map((file, index) => ({
+        id: `new-${Date.now()}-${index}`,
+        name: `新衣物 ${wardrobeItems.length + index + 1}`,
+        category: '上装',
+        subCategory: 'T恤',
+        primaryColor: '#808080',
+        colors: ['灰色'],
+        season: ['春夏'],
+        occasions: ['日常'],
+        style: ['简约'],
+        material: '棉',
+        status: 'pending_review' as ClothingItem['status'],
+        imageUrl: URL.createObjectURL(file),
+        description: '新上传的衣物',
+        wearCount: 0,
+      }));
+      setUploadedItems(newItems);
+      setIsAnalyzing(false);
+    }, 2000);
   };
 
-  const getStatusBadge = (status: WardrobeItem['status']) => {
-    switch (status) {
-      case 'washing':
-        return <Badge className="text-[10px] absolute top-2 right-2 bg-warning-bg/90 text-warning-fg border-0 backdrop-blur-sm">洗衣中</Badge>;
-      case 'lent':
-        return <Badge className="text-[10px] absolute top-2 right-2 bg-info-bg/90 text-info-fg border-0 backdrop-blur-sm">借出</Badge>;
-      case 'pending_review':
-        return <Badge variant="outline" className="text-[10px] absolute top-2 right-2 border-warning-fg text-warning-fg bg-background/80 backdrop-blur-sm">待确认</Badge>;
-      default:
-        return null;
-    }
+  const handleConfirmUpload = () => {
+    uploadedItems.forEach((item) => addItem(item));
+    setUploadedItems([]);
+    setIsUploadSheetOpen(false);
+    toast.success(`已添加 ${uploadedItems.length} 件衣物`);
   };
 
-  // Get wear log for an outfit
-  const getOutfitWearLog = (outfitId: string) => {
-    return wearLogs.find(log => log.outfitId === outfitId);
-  };
-
-  // Handle "use this item to style"
-  const handleUseItemToStyle = () => {
-    if (!selectedItem) return;
-    setSelectedItem(null);
-    router.push('/ai-styling');
-  };
-
-  // Handle mark item status
-  const handleMarkStatus = (status: WardrobeItem['status']) => {
-    if (!selectedItem) return;
-    setItemStatus(prev => ({ ...prev, [selectedItem.id]: status }));
-    setShowItemActions(false);
-    setSelectedItem(null);
-  };
-
-  // Handle open edit form
-  const handleOpenEditForm = () => {
-    if (!selectedItem) return;
-    setEditFormData({
-      name: selectedItem.name,
-      category: selectedItem.category,
-      subCategory: selectedItem.subCategory,
-      colors: selectedItem.colors,
-      occasions: selectedItem.occasions,
-      style: selectedItem.style,
-    });
-    setShowItemActions(false);
-    setShowEditForm(true);
-  };
-
-  // Handle save edit
   const handleSaveEdit = () => {
-    if (!selectedItem) return;
-    // In a real app, this would update the item in the database
-    // For now, we just close the form
-    setShowEditForm(false);
-    setEditFormData({});
+    if (!editItem) return;
+    updateItem(editItem.id, editItem);
+    setEditItem(null);
+    setSelectedItem(null);
+    toast.success('已保存修改');
   };
+
+  const handleDelete = () => {
+    if (!deleteConfirmItem) return;
+    deleteItem(deleteConfirmItem.id);
+    setDeleteConfirmItem(null);
+    setSelectedItem(null);
+    setIsMoreSheetOpen(false);
+    toast.success('已删除衣物');
+  };
+
+  const handleBatchStatus = (status: ClothingStatus) => {
+    if (!selectedItem) return;
+    updateItem(selectedItem.id, { status });
+    setSelectedItem({ ...selectedItem, status });
+    setIsMoreSheetOpen(false);
+    toast.success(`已标记为${STATUS_CONFIG[status].label}`);
+  };
+
+  const stats = getStats();
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between mb-3">
+    <div className="min-h-screen bg-background">
+      {/* Compact Header */}
+      <header className="sticky top-0 z-40 glass-surface border-b border-border">
+        <div className="px-4 pt-[env(safe-area-inset-top)]">
+          {/* Title Row */}
+          <div className="flex items-center justify-between h-12">
             <div>
-              <h1 className="text-xl font-semibold text-foreground tracking-tight">我的衣橱</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {viewMode === 'items'
-                  ? `${wardrobeItems.length} 件单品`
-                  : `${outfits.length} 套搭配`}
-              </p>
+              <h1 className="text-lg font-semibold text-foreground">我的衣橱</h1>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              onClick={() => setShowFilter(true)}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs">
+                {stats.totalItems} 件
+              </Badge>
+            </div>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 mb-3 p-1 rounded-lg bg-muted/30 border border-border/20">
-            <button
-              onClick={() => setViewMode('items')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium transition-all ${
-                viewMode === 'items'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              单品
-              <span className="opacity-50">{wardrobeItems.length}</span>
-            </button>
-            <button
-              onClick={() => setViewMode('outfits')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium transition-all ${
-                viewMode === 'outfits'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Shirt className="h-3.5 w-3.5" />
-              搭配
-              <span className="opacity-50">{outfits.length}</span>
-            </button>
-          </div>
-
-          {/* Search - only show in items view */}
-          {viewMode === 'items' && (
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* View Mode + Search in one row */}
+          <div className="flex items-center gap-2 pb-2">
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('items')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'items'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                <Shirt className="w-3.5 h-3.5" />
+                单品
+              </button>
+              <button
+                onClick={() => setViewMode('outfits')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'outfits'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                搭配
+              </button>
+            </div>
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
+                placeholder="搜索衣物..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索衣物，如 &quot;黑色通勤上衣&quot;"
-                className="pl-9 h-10 bg-muted/30 border-border/40 rounded-lg text-sm placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+                className="pl-9 h-9 bg-muted/50 border-none text-sm"
               />
             </div>
-          )}
+          </div>
 
-          {/* Category chips - only show in items view */}
-          {viewMode === 'items' && (
-            <ScrollArea className="w-full whitespace-nowrap">
-              <div className="flex gap-2 pb-2">
-                {categories.map((cat) => (
-                  <Button
-                    key={cat.value}
-                    variant={activeCategory === cat.value ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveCategory(cat.value)}
-                    className={`rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                      activeCategory === cat.value
-                        ? 'chip-selected text-primary border-0'
-                        : 'bg-background/60 text-muted-foreground border-border/30 hover:bg-muted/50'
-                    }`}
-                  >
-                    {cat.label}
-                    <span className="ml-1 opacity-60">{itemCounts[cat.value] || 0}</span>
-                  </Button>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
+          {/* Category Chips */}
+          <div className="flex items-center gap-2 pb-2 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveCategory('all')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
+                activeCategory === 'all'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              全部
+              <span className="text-xs opacity-70">{itemCounts.all}</span>
+            </button>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
+                  activeCategory === cat.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {cat.label}
+                <span className="text-xs opacity-70">{itemCounts[cat.key] || 0}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Content */}
-      <div className="px-4 pt-4">
-        {/* Items View */}
-        {viewMode === 'items' && (
-          <>
-            {filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
-                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
+      <div className="px-4 py-4">
+        {viewMode === 'items' ? (
+          /* Items Grid */
+          <div className="grid grid-cols-2 gap-3">
+            {filteredItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setSelectedItem(item)}
+                className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5 text-left"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  loading="lazy"
+                  className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-200"
+                />
+
+                {/* Status Badge */}
+                {item.status !== 'available' && (
+                  <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_CONFIG[item.status]?.color || ''}`}>
+                    {STATUS_CONFIG[item.status]?.label || item.status}
+                  </div>
+                )}
+
+                {/* Item Info */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-white/70 text-xs">{item.subCategory}</p>
                 </div>
-                <p className="text-sm font-medium text-foreground mb-1">没有找到匹配的衣物</p>
-                <p className="text-xs text-muted-foreground">试试其他搜索词或筛选条件</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          /* Outfits Grid */
+          <div className="grid grid-cols-2 gap-3">
+            {mockOutfits.map((outfit) => (
+              <div
+                key={outfit.id}
+                className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5"
+              >
+                {/* Outfit Preview - Stacked Items */}
+                <div className="w-full h-full p-3">
+                  <div className="relative w-full h-full">
+                    {outfit.items.slice(0, 3).map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="absolute inset-0 rounded-md bg-background/80 shadow-sm overflow-hidden transition-transform group-hover:scale-[1.02]"
+                        style={{
+                          transform: `translateY(${index * 4}px) scale(${1 - index * 0.05})`,
+                          zIndex: 3 - index,
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          loading="lazy"
+                          className="w-full h-full object-contain p-2"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Item Count Badge */}
+                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/90 flex items-center justify-center text-xs font-medium text-foreground shadow-sm">
+                  {outfit.items.length}
+                </div>
+
+                {/* AI Badge */}
+                {outfit.isAI && (
+                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
+                    AI
+                  </div>
+                )}
+
+                {/* Outfit Info */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                  <p className="text-white text-sm font-medium truncate">{outfit.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-white/70 text-xs capitalize">{outfit.occasion}</span>
+                    <span className="text-white/50 text-xs">·</span>
+                    <span className="text-white/70 text-xs">{outfit.lastWorn}</span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedItem(item)}
-                    className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
-                  >
-                    {/* Image area - 4:5 ratio */}
-                    <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                      />
-                      {getStatusBadge(getItemStatus(item))}
-                      {/* Subtle gradient overlay on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    {/* Info */}
-                    <div className="p-2.5">
-                      <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.subCategory}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
 
-        {/* Outfits View */}
-        {viewMode === 'outfits' && (
-          <>
-            {outfits.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
-                  <Shirt className="h-8 w-8 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">还没有保存的搭配</p>
-                <p className="text-xs text-muted-foreground">去搭配页面创建你的第一套搭配</p>
-                <Button
-                  className="mt-4 bg-primary hover:bg-primary/90 btn-primary-glow"
-                  onClick={() => router.push('/ai-styling')}
-                >
-                  <Sparkles className="h-4 w-4 mr-1.5" />
-                  去搭配
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {outfits.map((outfit) => {
-                  const wearLog = getOutfitWearLog(outfit.id);
-                  return (
-                    <button
-                      key={outfit.id}
-                      onClick={() => setSelectedOutfit(outfit)}
-                      className="group relative rounded-lg bg-muted/20 border border-border/20 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/15 active:scale-[0.98] card-interactive text-left"
-                    >
-                      {/* Image area - 4:5 ratio with stacked items preview */}
-                      <div className="relative aspect-[4/5] bg-muted/40 overflow-hidden flex items-center justify-center">
-                        {/* Stacked items preview */}
-                        <div className="relative w-full h-full">
-                          {outfit.items.slice(0, 3).map((item, idx) => {
-                            const totalItems = Math.min(outfit.items.length, 3);
-                            const scale = 1 - idx * 0.15;
-                            const offsetY = idx * 8;
-                            const zIndex = totalItems - idx;
-                            return (
-                              <div
-                                key={item.id}
-                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden border-2 border-background shadow-md"
-                                style={{
-                                  width: `${65 - idx * 10}%`,
-                                  height: `${65 - idx * 10}%`,
-                                  zIndex,
-                                  transform: `translate(-50%, -50%) scale(${scale}) translateY(${offsetY}%)`,
-                                }}
-                              >
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {/* Item count badge */}
-                        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] font-medium text-foreground/70">
-                          {outfit.items.length}件
-                        </div>
-                        {/* AI badge */}
-                        {outfit.source === 'ai_text' && (
-                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-ai-50 text-[10px] font-medium text-ai-600 flex items-center gap-0.5">
-                            <Sparkles className="h-2.5 w-2.5" />
-                            AI
-                          </div>
-                        )}
-                        {/* Subtle gradient overlay on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {/* Info */}
-                      <div className="p-2.5">
-                        <p className="text-xs font-medium text-foreground truncate">{outfit.name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-muted-foreground truncate">{outfit.occasion}</span>
-                          {wearLog && (
-                            <>
-                              <span className="text-[10px] text-muted-foreground">·</span>
-                              <span className="text-[10px] text-muted-foreground truncate">上次{wearLog.date.slice(5)}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
+        {filteredItems.length === 0 && viewMode === 'items' && (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Shirt className="w-12 h-12 mb-4 opacity-50" />
+            <p className="text-sm">没有找到匹配的衣物</p>
+          </div>
         )}
       </div>
 
       {/* FAB */}
-      <div className="fixed bottom-24 right-4 z-30">
-        <Button
-          size="icon"
-          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 fab-shadow"
-          onClick={() => setShowAddMenu(true)}
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      </div>
+      <button
+        onClick={() => setIsUploadSheetOpen(true)}
+        className="fixed bottom-28 right-4 z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
-      {/* Add Menu Sheet */}
-      <Sheet open={showAddMenu} onOpenChange={setShowAddMenu}>
-        <SheetContent className="sm:max-w-sm">
+      {/* Item Detail Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>衣物详情</DialogTitle>
+            <DialogDescription>查看衣物详细信息</DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4">
+              {/* Large Image */}
+              <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedItem.imageUrl}
+                  alt={selectedItem.name}
+                  className="w-full h-full object-contain p-4"
+                />
+              </div>
+
+              {/* Info */}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">{selectedItem.name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedItem.subCategory}</p>
+                </div>
+
+                {selectedItem.description && (
+                  <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">颜色：</span>
+                    <span className="text-foreground">{selectedItem.primaryColor}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">材质：</span>
+                    <span className="text-foreground">{selectedItem.material}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">季节：</span>
+                    <span className="text-foreground">{selectedItem.season.join(', ')}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">穿着次数：</span>
+                    <span className="text-foreground">{selectedItem.wearCount} 次</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    setSelectedItem(null);
+                    // Navigate to AI styling with this item
+                    window.location.href = `/ai-styling?item=${selectedItem.id}`;
+                  }}
+                  className="flex-1 bg-primary hover:bg-primary-hover"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  用它搭配
+                </Button>
+                <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-auto">
+                    <SheetHeader>
+                      <SheetTitle>更多操作</SheetTitle>
+                    </SheetHeader>
+                    <div className="py-4 space-y-2">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          setEditItem({ ...selectedItem });
+                          setIsMoreSheetOpen(false);
+                        }}
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        编辑信息
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => handleBatchStatus('washing')}
+                      >
+                        <Hand className="w-4 h-4 mr-2" />
+                        标记为洗衣中
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => handleBatchStatus('lent')}
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        标记为已借出
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-destructive"
+                        onClick={() => {
+                          setDeleteConfirmItem(selectedItem);
+                          setIsMoreSheetOpen(false);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        删除单品
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>编辑衣物</DialogTitle>
+            <DialogDescription>修改衣物信息</DialogDescription>
+          </DialogHeader>
+          {editItem && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">名称</label>
+                <Input
+                  value={editItem.name}
+                  onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">描述</label>
+                <Input
+                  value={editItem.description || ''}
+                  onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">子分类</label>
+                  <Input
+                    value={editItem.subCategory}
+                    onChange={(e) => setEditItem({ ...editItem, subCategory: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">材质</label>
+                  <Input
+                    value={editItem.material}
+                    onChange={(e) => setEditItem({ ...editItem, material: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveEdit} className="flex-1 bg-primary hover:bg-primary-hover">
+                  <Check className="w-4 h-4 mr-2" />
+                  保存
+                </Button>
+                <Button variant="outline" onClick={() => setEditItem(null)}>
+                  取消
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteConfirmItem?.name}」吗？此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Upload Sheet */}
+      <Sheet open={isUploadSheetOpen} onOpenChange={setIsUploadSheetOpen}>
+        <SheetContent side="bottom" className="h-auto">
           <SheetHeader>
             <SheetTitle>添加衣物</SheetTitle>
-            <SheetDescription>选择添加方式</SheetDescription>
           </SheetHeader>
-          <div className="py-6 space-y-3 stagger-children">
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
-              onClick={() => {
-                setShowAddMenu(false);
-                fileInputRef.current?.setAttribute('capture', 'environment');
-                fileInputRef.current?.click();
-              }}
-            >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Camera className="h-5 w-5 text-primary" />
+          <div className="py-4 space-y-4">
+            {uploadedItems.length === 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={() => {
+                    setUploadMode('single');
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <Camera className="w-6 h-6" />
+                  <span className="text-sm">拍摄单件</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={() => {
+                    setUploadMode('batch');
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <ImageIcon className="w-6 h-6" />
+                  <span className="text-sm">相册批量导入</span>
+                </Button>
               </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">拍摄单件</p>
-                <p className="text-xs text-muted-foreground">拍照自动识别衣物信息</p>
+            ) : (
+              <div className="space-y-4">
+                {isAnalyzing ? (
+                  <div className="flex flex-col items-center py-8">
+                    <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                    <p className="mt-4 text-sm text-muted-foreground">AI 正在识别衣物...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {uploadedItems.map((item) => (
+                        <div key={item.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleConfirmUpload} className="flex-1 bg-primary hover:bg-primary-hover">
+                        确认添加 ({uploadedItems.length})
+                      </Button>
+                      <Button variant="outline" onClick={() => setUploadedItems([])}>
+                        重新选择
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-4 justify-start gap-4 rounded-lg bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/15"
-              onClick={() => {
-                setShowAddMenu(false);
-                fileInputRef.current?.removeAttribute('capture');
-                fileInputRef.current?.setAttribute('multiple', 'multiple');
-                fileInputRef.current?.click();
-              }}
-            >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <ImageIcon className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">相册批量导入</p>
-                <p className="text-xs text-muted-foreground">从相册选择多张图片</p>
-              </div>
-            </Button>
+            )}
           </div>
-          {/* Hidden file input for image upload */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple={uploadMode === 'batch'}
             className="hidden"
             onChange={handleFileUpload}
           />
-        </SheetContent>
-      </Sheet>
-
-      {/* Item Detail Dialog */}
-      <Dialog open={!!selectedItem && !showItemActions} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-          <DialogDescription className="sr-only">衣物详情信息</DialogDescription>
-          {selectedItem && (
-            <>
-              {/* Image - Large Preview */}
-              <div className="aspect-square bg-muted/40 relative group">
-                <img
-                  src={selectedItem.imageUrl}
-                  alt={selectedItem.name}
-                  className="w-full h-full object-cover"
-                />
-                {/* Overlay actions on image */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                <button
-                  onClick={() => setShowItemActions(true)}
-                  className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-background transition-colors"
-                >
-                  <MoreHorizontal className="h-4 w-4 text-foreground" />
-                </button>
-              </div>
-              {/* Info */}
-              <div className="p-4 space-y-4">
-                <div>
-                  <DialogHeader>
-                    <DialogTitle className="text-lg">{selectedItem.name}</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Badge variant="secondary" className="text-xs">{selectedItem.category}</Badge>
-                    <Badge variant="outline" className="text-xs">{selectedItem.subCategory}</Badge>
-                    {selectedItem.brand && (
-                      <span className="text-xs text-muted-foreground">{selectedItem.brand}</span>
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Attributes */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">颜色</p>
-                    <p className="text-foreground">{selectedItem.colors.join(', ')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">材质</p>
-                    <p className="text-foreground">{selectedItem.material || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">季节</p>
-                    <p className="text-foreground">{selectedItem.season.join(', ')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">穿着次数</p>
-                    <p className="text-foreground">{selectedItem.wearCount} 次</p>
-                  </div>
-                  {selectedItem.lastWorn && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">上次穿着</p>
-                      <p className="text-foreground">{selectedItem.lastWorn}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-muted-foreground">风格</p>
-                    <p className="text-foreground">{selectedItem.style.join(', ')}</p>
-                  </div>
-                </div>
-
-                {/* Description */}
-                {selectedItem.description && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1.5">服饰描述</p>
-                      <p className="text-sm text-foreground leading-relaxed">{selectedItem.description}</p>
-                    </div>
-                  </>
-                )}
-
-                <Separator />
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1 h-10 bg-primary hover:bg-primary/90 text-sm btn-primary-glow"
-                    onClick={handleUseItemToStyle}
-                  >
-                    <Sparkles className="h-4 w-4 mr-1.5" />
-                    用它搭配
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10"
-                    onClick={() => setShowItemActions(true)}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Item Actions Sheet */}
-      <Sheet open={showItemActions} onOpenChange={setShowItemActions}>
-        <SheetContent className="sm:max-w-sm">
-          <SheetHeader>
-            <SheetTitle>
-              {selectedItem?.name || '操作'}
-            </SheetTitle>
-            <SheetDescription>选择要执行的操作</SheetDescription>
-          </SheetHeader>
-          <div className="py-4 space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-12 gap-3"
-              onClick={handleUseItemToStyle}
-            >
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium">用它搭配</p>
-                <p className="text-xs text-muted-foreground">以此单品为基础创建搭配</p>
-              </div>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-12 gap-3"
-              onClick={handleOpenEditForm}
-            >
-              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                <Edit3 className="h-4 w-4 text-foreground" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium">编辑信息</p>
-                <p className="text-xs text-muted-foreground">修改名称、分类、标签等</p>
-              </div>
-            </Button>
-            <Separator />
-            <p className="text-xs text-muted-foreground px-2">标记状态</p>
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-11 gap-3"
-              onClick={() => handleMarkStatus('washing')}
-            >
-              <div className="h-7 w-7 rounded-full bg-warning-bg/50 flex items-center justify-center">
-                <Package className="h-3.5 w-3.5 text-warning-fg" />
-              </div>
-              <span className="text-sm">标记为洗衣中</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-11 gap-3"
-              onClick={() => handleMarkStatus('available')}
-            >
-              <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-                <Heart className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <span className="text-sm">标记为可用</span>
-            </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-11 gap-3 text-destructive hover:text-destructive"
-              onClick={() => {
-                setShowItemActions(false);
-                setSelectedItem(null);
-              }}
-            >
-              <div className="h-7 w-7 rounded-full bg-destructive/10 flex items-center justify-center">
-                <Trash2 className="h-3.5 w-3.5" />
-              </div>
-              <span className="text-sm">删除单品</span>
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Outfit Detail Dialog */}
-      <Dialog open={!!selectedOutfit} onOpenChange={(open) => { if (!open) setSelectedOutfit(null); }}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
-          <DialogDescription className="sr-only">搭配详情信息</DialogDescription>
-          {selectedOutfit && (
-            <>
-              {/* Outfit items preview */}
-              <div className="bg-muted/30 p-6">
-                <div className="flex items-center justify-center gap-3 flex-wrap">
-                  {selectedOutfit.items.map((item) => (
-                    <div key={item.id} className="relative">
-                      <div className="h-20 w-20 rounded-lg bg-background overflow-hidden border border-border/30 shadow-sm">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <p className="text-[10px] text-muted-foreground text-center mt-1 truncate max-w-[80px]">
-                        {item.subCategory}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Outfit info */}
-              <div className="p-4 space-y-4">
-                <div>
-                  <DialogHeader>
-                    <DialogTitle className="text-lg">{selectedOutfit.name}</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Badge variant="secondary" className="text-xs">{selectedOutfit.occasion}</Badge>
-                    <Badge variant="outline" className="text-xs">{selectedOutfit.style}</Badge>
-                    <Badge variant="outline" className="text-xs">{selectedOutfit.season}</Badge>
-                    {selectedOutfit.source !== 'manual' && (
-                      <span className="text-[10px] text-ai-600 flex items-center gap-0.5">
-                        <Sparkles className="h-2.5 w-2.5" />
-                        {selectedOutfit.source === 'ai_text' ? 'AI 文字生成' : 'AI 参考图'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {selectedOutfit.explanation && (
-                  <>
-                    <Separator />
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
-                      <p className="text-sm text-foreground leading-relaxed">
-                        {selectedOutfit.explanation}
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                <Separator />
-
-                {/* Meta info */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">创建日期</p>
-                    <p className="text-foreground">{selectedOutfit.createdAt}</p>
-                  </div>
-                  {selectedOutfit.lastWorn && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">上次穿着</p>
-                      <p className="text-foreground">{selectedOutfit.lastWorn}</p>
-                    </div>
-                  )}
-                  {selectedOutfit.weather && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">天气</p>
-                      <p className="text-foreground">{selectedOutfit.weather}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-muted-foreground">单品数量</p>
-                    <p className="text-foreground">{selectedOutfit.items.length} 件</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1 h-10 bg-primary hover:bg-primary/90 text-sm btn-primary-glow"
-                    onClick={() => {
-                      setSelectedOutfit(null);
-                      router.push('/ai-styling');
-                    }}
-                  >
-                    <Sparkles className="h-4 w-4 mr-1.5" />
-                    基于此搭配
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10"
-                    onClick={() => {
-                      setSelectedOutfit(null);
-                    }}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Filter Sheet */}
-      <Sheet open={showFilter} onOpenChange={setShowFilter}>
-        <SheetContent className="sm:max-w-sm">
-          <SheetHeader>
-            <SheetTitle>筛选</SheetTitle>
-            <SheetDescription>按条件筛选你的衣物</SheetDescription>
-          </SheetHeader>
-          <div className="py-4 space-y-5">
-            <div>
-              <p className="text-sm font-medium text-foreground mb-2">品类</p>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((cat) => (
-                  <Button
-                    key={cat.value}
-                    variant={activeCategory === cat.value ? 'secondary' : 'outline'}
-                    size="sm"
-                    className={`rounded-full text-xs ${
-                      activeCategory === cat.value
-                        ? 'chip-selected text-primary border-0'
-                        : 'bg-muted/30 text-muted-foreground border-border/30'
-                    }`}
-                    onClick={() => {
-                      setActiveCategory(cat.value);
-                    }}
-                  >
-                    {cat.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm font-medium text-foreground mb-2">颜色</p>
-              <div className="flex flex-wrap gap-2">
-                {['黑色', '白色', '蓝色', '灰色', '棕色'].map((color) => (
-                  <Button key={color} variant="outline" size="sm" className="rounded-full text-xs bg-muted/20 border-border/30">
-                    {color}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm font-medium text-foreground mb-2">季节</p>
-              <div className="flex flex-wrap gap-2">
-                {['春夏', '春秋', '秋冬', '四季'].map((season) => (
-                  <Button key={season} variant="outline" size="sm" className="rounded-full text-xs bg-muted/20 border-border/30">
-                    {season}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 p-4 glass-surface-strong border-t border-border/30 flex gap-3">
-            <Button variant="outline" className="flex-1 h-10" onClick={() => { setActiveCategory('all'); setSearchQuery(''); }}>重置</Button>
-            <Button className="flex-1 h-10 bg-primary hover:bg-primary/90 btn-primary-glow" onClick={() => setShowFilter(false)}>
-              查看 {filteredItems.length} 件结果
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Edit Item Form */}
-      <Sheet open={showEditForm} onOpenChange={setShowEditForm}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
-          <SheetHeader>
-            <SheetTitle>编辑衣物信息</SheetTitle>
-            <SheetDescription>修改单品的名称、分类、标签等信息</SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-full px-4 pb-24">
-            <div className="space-y-5 py-4">
-              {/* Name */}
-              <div>
-                <label className="text-sm font-medium text-foreground">名称</label>
-                <input
-                  type="text"
-                  value={editFormData.name || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full mt-1.5 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="输入衣物名称"
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="text-sm font-medium text-foreground">分类</label>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  {['上装', '下装', '外套', '连衣裙', '鞋', '包', '配饰'].map((cat) => (
-                    <Button
-                      key={cat}
-                      variant={editFormData.category === cat ? 'default' : 'outline'}
-                      size="sm"
-                      className={editFormData.category === cat ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
-                      onClick={() => setEditFormData(prev => ({ ...prev, category: cat }))}
-                    >
-                      {cat}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Colors */}
-              <div>
-                <label className="text-sm font-medium text-foreground">颜色</label>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  {['白色', '黑色', '蓝色', '灰色', '棕色', '绿色', '红色', '粉色', '黄色', '紫色'].map((color) => (
-                    <Button
-                      key={color}
-                      variant={editFormData.colors?.includes(color) ? 'default' : 'outline'}
-                      size="sm"
-                      className={editFormData.colors?.includes(color) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
-                      onClick={() => {
-                        const colors = editFormData.colors || [];
-                        if (colors.includes(color)) {
-                          setEditFormData(prev => ({ ...prev, colors: colors.filter(c => c !== color) }));
-                        } else {
-                          setEditFormData(prev => ({ ...prev, colors: [...colors, color] }));
-                        }
-                      }}
-                    >
-                      {color}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Occasions */}
-              <div>
-                <label className="text-sm font-medium text-foreground">场合</label>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  {['日常', '通勤', '商务', '休闲', '运动', '约会', '度假'].map((occasion) => (
-                    <Button
-                      key={occasion}
-                      variant={editFormData.occasions?.includes(occasion) ? 'default' : 'outline'}
-                      size="sm"
-                      className={editFormData.occasions?.includes(occasion) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
-                      onClick={() => {
-                        const occasions = editFormData.occasions || [];
-                        if (occasions.includes(occasion)) {
-                          setEditFormData(prev => ({ ...prev, occasions: occasions.filter(o => o !== occasion) }));
-                        } else {
-                          setEditFormData(prev => ({ ...prev, occasions: [...occasions, occasion] }));
-                        }
-                      }}
-                    >
-                      {occasion}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Style */}
-              <div>
-                <label className="text-sm font-medium text-foreground">风格</label>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  {['简约', '休闲', '商务', '运动', '优雅', '街头', '复古'].map((style) => (
-                    <Button
-                      key={style}
-                      variant={editFormData.style?.includes(style) ? 'default' : 'outline'}
-                      size="sm"
-                      className={editFormData.style?.includes(style) ? 'bg-primary hover:bg-primary/90' : 'bg-muted/20 border-border/30'}
-                      onClick={() => {
-                        const styleArr = editFormData.style || [];
-                        if (styleArr.includes(style)) {
-                          setEditFormData(prev => ({ ...prev, style: styleArr.filter(s => s !== style) }));
-                        } else {
-                          setEditFormData(prev => ({ ...prev, style: [...styleArr, style] }));
-                        }
-                      }}
-                    >
-                      {style}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-          <div className="absolute bottom-0 left-0 right-0 p-4 glass-surface-strong border-t border-border/30 flex gap-3">
-            <Button variant="outline" className="flex-1 h-11" onClick={() => setShowEditForm(false)}>取消</Button>
-            <Button className="flex-1 h-11 bg-primary hover:bg-primary/90 btn-primary-glow" onClick={handleSaveEdit}>保存</Button>
-          </div>
         </SheetContent>
       </Sheet>
     </div>

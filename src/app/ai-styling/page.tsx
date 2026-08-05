@@ -60,7 +60,9 @@ import { Separator } from '@/components/ui/separator';
 import { OutfitCanvas, type CanvasItem } from '@/components/outfit-canvas';
 import { WardrobeTray } from '@/components/wardrobe-tray';
 import { wardrobeItems, quickScenarios } from '@/lib/mock-data';
-import type { WardrobeItem } from '@/lib/mock-data';
+import type { WardrobeItem, Outfit } from '@/lib/mock-data';
+import { useWardrobe } from '@/lib/store';
+import { toast } from '@/lib/toast';
 
 const iconMap: Record<string, React.ReactNode> = {
   Briefcase: <Briefcase className="h-3.5 w-3.5" />,
@@ -75,7 +77,7 @@ type PageState = 'empty' | 'loading' | 'preview' | 'editing';
 const loadingStages = [
   { label: '正在理解场合', duration: 800 },
   { label: '正在查询天气', duration: 600 },
-  { label: '正在从 86 件衣物中筛选', duration: 1200 },
+  { label: '正在从衣橱中筛选', duration: 1200 },
   { label: '正在生成搭配方案', duration: 1000 },
 ];
 
@@ -91,6 +93,7 @@ interface CandidateOutfit {
 }
 
 export default function AIStylingPage() {
+  const { addRecord, addOutfit, state } = useWardrobe();
   const [pageState, setPageState] = useState<PageState>('empty');
   const [inputValue, setInputValue] = useState('');
   const [currentStage, setCurrentStage] = useState(0);
@@ -435,47 +438,55 @@ export default function AIStylingPage() {
       return;
     }
 
-    // Create wear log entry
-    const today = new Date().toISOString().split('T')[0];
-    const wearLog = {
-      date: today,
-      outfitId,
-      outfitName,
-      itemIds: outfitItems.map((i) => i.id),
-      occasion: '日常',
-      weather: { temperature: 18, condition: '晴' },
-      feedback: null,
-      createdAt: new Date().toISOString(),
+    // Create outfit if not exists
+    const outfit: Outfit = {
+      id: outfitId,
+      name: outfitName,
+      items: outfitItems,
+      occasion: 'daily',
+      style: '日常',
+      season: '春夏',
+      source: 'ai_text',
+      createdAt: new Date().toISOString().split('T')[0],
+      explanation: '',
     };
 
-    // Store in localStorage for now
-    const existingLogs = JSON.parse(localStorage.getItem('wearLogs') || '[]');
-    existingLogs.push(wearLog);
-    localStorage.setItem('wearLogs', JSON.stringify(existingLogs));
+    // Save outfit and record
+    addOutfit(outfit);
+    const today = new Date().toISOString().split('T')[0];
+    addRecord({
+      id: `record-${Date.now()}`,
+      date: today,
+      outfitId,
+      outfit,
+    });
 
-    // Show brief success feedback
-    alert(`已记录今天穿搭：${outfitName}`);
+    toast.success('已记录今天穿搭', outfitName);
   };
 
   // Save outfit
   const handleSaveOutfit = () => {
-    const outfit = pageState === 'editing'
+    const outfitData = pageState === 'editing'
       ? { name: candidates[previewCandidateIndex]?.outfit?.name || '我的搭配', explanation: '', items: canvasItems.map((ci) => ci.item) }
       : candidates[previewCandidateIndex]?.outfit;
 
-    if (!outfit) return;
+    if (!outfitData) return;
 
-    // Store in localStorage for now (will be replaced by real API)
-    const savedOutfits = JSON.parse(localStorage.getItem('savedOutfits') || '[]');
-    savedOutfits.push({
+    const outfit: Outfit = {
       id: `outfit-${Date.now()}`,
-      ...outfit,
-      createdAt: new Date().toISOString(),
-      source: pageState === 'editing' ? 'manual' : 'ai',
-    });
-    localStorage.setItem('savedOutfits', JSON.stringify(savedOutfits));
+      name: outfitData.name,
+      explanation: outfitData.explanation || '',
+      items: outfitData.items,
+      occasion: 'daily',
+      style: '日常',
+      season: '春夏',
+      source: 'ai_text',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    addOutfit(outfit);
     setShowMoreMenu(false);
-    alert(`已保存搭配：${outfit.name}`);
+    toast.success('已保存搭配', outfitData.name);
   };
 
   // Restore layout
@@ -996,13 +1007,21 @@ export default function AIStylingPage() {
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-200px)]">
               <div className="space-y-4 py-4">
+                {/* Show actual AI explanation */}
+                {previewOutfit.explanation && (
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-sm text-foreground leading-relaxed">{previewOutfit.explanation}</p>
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Check className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">场合匹配</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">商务休闲风格，适合办公环境</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {previewOutfit.explanation ? '根据你描述的需求进行匹配' : '根据日常场景进行搭配'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -1011,7 +1030,7 @@ export default function AIStylingPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">温度适宜</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">22-28°C，针织衫厚度适中</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">根据当前天气选择合适的厚度</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -1020,7 +1039,7 @@ export default function AIStylingPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">色彩协调</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">米白 + 深蓝 + 棕色，经典配色</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">AI 分析了单品的色彩搭配关系</p>
                   </div>
                 </div>
               </div>
@@ -1037,7 +1056,24 @@ export default function AIStylingPage() {
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-200px)]">
               <div className="space-y-3 py-4">
-                <p className="text-sm text-muted-foreground text-center py-8">暂无历史方案</p>
+                {state.records.length > 0 ? (
+                  state.records.slice(0, 20).map((record) => (
+                    <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
+                        {record.outfit.items[0] && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={record.outfit.items[0].imageUrl} alt="" className="w-full h-full object-contain p-1" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{record.date}</p>
+                        <p className="text-xs text-muted-foreground">{record.outfit.items.length} 件单品</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">暂无历史方案</p>
+                )}
               </div>
             </ScrollArea>
           </SheetContent>

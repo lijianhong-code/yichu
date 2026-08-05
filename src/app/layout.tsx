@@ -1,13 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { BottomTabNav } from '@/components/bottom-tab-nav';
-
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
+import { WardrobeProvider } from '@/lib/store';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: '衣橱助手 - AI智慧衣橱',
@@ -22,11 +17,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`min-h-screen bg-neutral-25 antialiased ${inter.className}`}>
-        <main className="mx-auto max-w-lg pb-20">
-          {children}
-        </main>
-        <BottomTabNav />
+      <body className="min-h-screen bg-background antialiased" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <WardrobeProvider>
+          <main className="mx-auto max-w-lg pb-20">
+            {children}
+          </main>
+          <BottomTabNav />
+          <Toaster />
+        </WardrobeProvider>
       </body>
     </html>
   );

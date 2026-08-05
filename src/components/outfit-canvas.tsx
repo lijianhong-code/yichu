@@ -129,6 +129,8 @@ export function OutfitCanvas({
   const dragStartRef = useRef<{ x: number; y: number; itemX: number; itemY: number } | null>(null)
   const scaleStartRef = useRef<{ x: number; scale: number } | null>(null)
   const guidesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const lastMoveRef = useRef<{ x: number; y: number } | null>(null)
 
   // Sync selection state with parent
   useEffect(() => {
@@ -341,43 +343,57 @@ export function OutfitCanvas({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging && dragStartRef.current && selectedId) {
-        const rect = canvasRef.current?.getBoundingClientRect()
-        if (!rect) return
+      if (!isDragging && !isScaling) return
 
-        const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100
-        const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100
+      // Store latest position for RAF processing
+      lastMoveRef.current = { x: e.clientX, y: e.clientY }
 
-        let newX = dragStartRef.current.itemX + dx
-        let newY = dragStartRef.current.itemY + dy
+      // Schedule RAF if not already scheduled
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null
+          const pos = lastMoveRef.current
+          if (!pos) return
 
-        // Clamp to canvas bounds
-        const item = items.find((i) => i.id === selectedId)
-        if (item) {
-          const size = ITEM_DEFAULT_SIZES[item.item.category] || { w: 25, h: 25 }
-          newX = Math.max(0, Math.min(100 - size.w * item.scale, newX))
-          newY = Math.max(0, Math.min(100 - size.h * item.scale, newY))
-        }
+          if (isDragging && dragStartRef.current && selectedId) {
+            const rect = canvasRef.current?.getBoundingClientRect()
+            if (!rect) return
 
-        setItems((prev) =>
-          prev.map((i) => (i.id === selectedId ? { ...i, x: newX, y: newY } : i))
-        )
+            const dx = ((pos.x - dragStartRef.current.x) / rect.width) * 100
+            const dy = ((pos.y - dragStartRef.current.y) / rect.height) * 100
 
-        // Detect alignment
-        const newGuides = detectAlignment(selectedId, newX, newY)
-        setGuides(newGuides)
-      }
+            let newX = dragStartRef.current.itemX + dx
+            let newY = dragStartRef.current.itemY + dy
 
-      if (isScaling && scaleStartRef.current && selectedId) {
-        const dx = e.clientX - scaleStartRef.current.x
-        const scaleDelta = dx / 200 // sensitivity
-        const newScale = Math.max(
-          MIN_SCALE,
-          Math.min(MAX_SCALE, scaleStartRef.current.scale + scaleDelta)
-        )
-        setItems((prev) =>
-          prev.map((i) => (i.id === selectedId ? { ...i, scale: newScale } : i))
-        )
+            // Clamp to canvas bounds
+            const item = items.find((i) => i.id === selectedId)
+            if (item) {
+              const size = ITEM_DEFAULT_SIZES[item.item.category] || { w: 25, h: 25 }
+              newX = Math.max(0, Math.min(100 - size.w * item.scale, newX))
+              newY = Math.max(0, Math.min(100 - size.h * item.scale, newY))
+            }
+
+            setItems((prev) =>
+              prev.map((i) => (i.id === selectedId ? { ...i, x: newX, y: newY } : i))
+            )
+
+            // Detect alignment
+            const newGuides = detectAlignment(selectedId, newX, newY)
+            setGuides(newGuides)
+          }
+
+          if (isScaling && scaleStartRef.current && selectedId) {
+            const dx = pos.x - scaleStartRef.current.x
+            const scaleDelta = dx / 200 // sensitivity
+            const newScale = Math.max(
+              MIN_SCALE,
+              Math.min(MAX_SCALE, scaleStartRef.current.scale + scaleDelta)
+            )
+            setItems((prev) =>
+              prev.map((i) => (i.id === selectedId ? { ...i, scale: newScale } : i))
+            )
+          }
+        })
       }
     }
 
@@ -408,6 +424,10 @@ export function OutfitCanvas({
     return () => {
       window.removeEventListener("mousemove", handleMouseMove)
       window.removeEventListener("mouseup", handleMouseUp)
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
   }, [isDragging, isScaling, selectedId, items, detectAlignment, pushHistory])
 
@@ -534,13 +554,18 @@ export function OutfitCanvas({
     }
   }, [isDragging, isScaling, selectedId, items, detectAlignment, pushHistory])
 
-  // ─── Sync initial items ──────────────────────────────────────────────────
+  // ─── Sync initial items (only when truly new data, not during editing) ────
 
+  const prevInitialRef = useRef(initialItems)
   useEffect(() => {
-    setItems(initialItems)
-    setHistory([{ items: initialItems }])
-    setHistoryIndex(0)
-    setSelectedId(null)
+    // Only reset if initialItems reference actually changed (new outfit generated, etc.)
+    if (prevInitialRef.current !== initialItems) {
+      prevInitialRef.current = initialItems
+      setItems(initialItems)
+      setHistory([{ items: initialItems }])
+      setHistoryIndex(0)
+      setSelectedId(null)
+    }
   }, [initialItems])
 
   // ─── Render ──────────────────────────────────────────────────────────────
@@ -553,7 +578,7 @@ export function OutfitCanvas({
         className="relative w-full overflow-hidden rounded-lg select-none"
         style={{
           aspectRatio: "3/4",
-          backgroundColor: "var(--neutral-75)",
+          backgroundColor: "var(--color-neutral-75, #ECEFEB)",
           maxHeight: "62vh",
         }}
         onMouseDown={handleCanvasMouseDown}
@@ -576,6 +601,24 @@ export function OutfitCanvas({
               <div
                 key={`guide-${idx}`}
                 className="absolute left-0 right-0 h-px bg-brand-500/40 z-50 pointer-events-none"
+                style={{ top: `${guide.position}%` }}
+              />
+            )
+          }
+          if (guide.type === "edge-left" || guide.type === "edge-right") {
+            return (
+              <div
+                key={`guide-${idx}`}
+                className="absolute top-0 bottom-0 w-px bg-ai-400/40 z-50 pointer-events-none"
+                style={{ left: `${guide.position}%` }}
+              />
+            )
+          }
+          if (guide.type === "edge-top" || guide.type === "edge-bottom") {
+            return (
+              <div
+                key={`guide-${idx}`}
+                className="absolute left-0 right-0 h-px bg-ai-400/40 z-50 pointer-events-none"
                 style={{ top: `${guide.position}%` }}
               />
             )
