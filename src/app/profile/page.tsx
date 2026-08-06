@@ -65,12 +65,12 @@ export default function ProfilePage() {
   };
 
   const menuItems = [
-    { icon: Calendar, label: '穿着记录', action: 'records', showChevron: true },
-    { icon: Heart, label: '风格偏好', action: 'preferences', showChevron: true },
-    { icon: Ruler, label: '身形尺码', action: 'body', showChevron: true },
-    { icon: Settings, label: '设置', action: 'settings', showChevron: true },
-    { icon: Shield, label: '隐私', action: 'privacy', showChevron: true },
-    { icon: HelpCircle, label: '帮助与反馈', action: 'help', showChevron: true },
+    { icon: Calendar, label: '穿着记录', desc: '查看历史穿搭记录', action: 'records', showChevron: true },
+    { icon: Heart, label: '风格偏好', desc: '管理你的穿搭风格', action: 'preferences', showChevron: true },
+    { icon: Ruler, label: '身形尺码', desc: '记录身材数据', action: 'body', showChevron: true },
+    { icon: Settings, label: '设置', desc: '通知、主题等', action: 'settings', showChevron: true },
+    { icon: Shield, label: '隐私', desc: '数据与权限管理', action: 'privacy', showChevron: true },
+    { icon: HelpCircle, label: '帮助与反馈', desc: '常见问题与反馈', action: 'help', showChevron: true },
   ];
 
   return (
@@ -78,7 +78,7 @@ export default function ProfilePage() {
       {/* Header with User Info */}
       <div className="bg-card border-b border-border px-4 pt-[env(safe-area-inset-top)] pb-6">
         <div className="flex items-center gap-4 py-4">
-          <Avatar className="w-16 h-16">
+          <Avatar className="w-16 h-16 ring-2 ring-primary/20">
             <AvatarFallback className="text-lg font-medium bg-primary/10 text-primary">
               {user.name.charAt(0)}
             </AvatarFallback>
@@ -91,16 +91,16 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-semibold text-foreground">{stats.totalItems}</p>
+          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalItems}</p>
             <p className="text-xs text-muted-foreground mt-1">衣物</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-semibold text-foreground">{stats.totalOutfits}</p>
+          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalOutfits}</p>
             <p className="text-xs text-muted-foreground mt-1">搭配</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-semibold text-foreground">{stats.utilizationRate}%</p>
+          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-2xl font-semibold text-primary tabular-nums">{stats.utilizationRate}%</p>
             <p className="text-xs text-muted-foreground mt-1">利用率</p>
           </div>
         </div>
@@ -120,19 +120,19 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">本月穿搭利用率</span>
-                  <span className="text-sm font-medium text-foreground">{stats.utilizationRate}%</span>
+                  <span className="text-sm font-medium text-foreground tabular-nums">{stats.utilizationRate}%</span>
                 </div>
                 <Progress value={stats.utilizationRate} className="h-2" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">AI 建议采用率</span>
-                  <span className="text-sm font-medium text-foreground">{stats.adoptionRate}%</span>
+                  <span className="text-sm font-medium text-foreground tabular-nums">{stats.adoptionRate}%</span>
                 </div>
                 <Progress value={stats.adoptionRate} className="h-2" />
               </div>
               <Button variant="outline" className="w-full" onClick={() => setIsPreferenceSheetOpen(true)}>
-                查看详情
+                查看我的风格报告
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -148,13 +148,18 @@ export default function ProfilePage() {
               <button
                 key={item.action}
                 onClick={() => handleMenuClick(item.action)}
-                className={`flex items-center gap-3 w-full px-4 py-3.5 text-left hover:bg-muted/50 transition-colors ${
+                className={`flex items-center gap-3 w-full px-4 py-3.5 text-left hover:bg-muted/50 active:bg-muted transition-colors ${
                   index !== menuItems.length - 1 ? 'border-b border-border' : ''
                 }`}
               >
-                <item.icon className="w-5 h-5 text-muted-foreground" />
-                <span className="flex-1 text-sm text-foreground">{item.label}</span>
-                {item.showChevron && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <item.icon className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-foreground block">{item.label}</span>
+                  <span className="text-xs text-muted-foreground block mt-0.5">{item.desc}</span>
+                </div>
+                {item.showChevron && <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
               </button>
             ))}
           </CardContent>
@@ -173,6 +178,11 @@ export default function ProfilePage() {
         </Button>
       </div>
 
+      {/* Version */}
+      <div className="px-4 mt-6 text-center">
+        <p className="text-xs text-muted-foreground">衣橱助手 v1.0.0</p>
+      </div>
+
       {/* Records Sheet */}
       <Sheet open={isRecordSheetOpen} onOpenChange={setIsRecordSheetOpen}>
         <SheetContent side="bottom" className="h-[70vh]">
@@ -186,7 +196,7 @@ export default function ProfilePage() {
                   <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
                     {record.outfit.items[0] && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={record.outfit.items[0].imageUrl} alt="" className="w-full h-full object-contain p-1" />
+                      <img src={record.outfit.items[0].imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -197,7 +207,8 @@ export default function ProfilePage() {
               ))
             ) : (
               <div className="text-center py-12">
-                <Calendar className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-28 h-28 mx-auto mb-3 object-contain opacity-70" />
                 <p className="text-sm text-muted-foreground">暂无穿着记录</p>
                 <p className="text-xs text-muted-foreground mt-1">开始记录你的每日穿搭吧</p>
               </div>

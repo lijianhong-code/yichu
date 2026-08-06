@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -68,6 +68,10 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(formatDateStr(now.getFullYear(), now.getMonth(), now.getDate()));
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
+  
+  // Swipe gesture state
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   const calendarDays = useMemo(() => generateCalendarDays(currentYear, currentMonth), [currentYear, currentMonth]);
 
@@ -144,6 +148,35 @@ export default function CalendarPage() {
     window.location.href = '/ai-styling';
   };
 
+  // Swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50; // Minimum swipe distance
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe left - next month
+        handleNextMonth();
+      } else {
+        // Swipe right - prev month
+        handlePrevMonth();
+      }
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   // Determine button state based on date
   const isToday = selectedDate === formatDateStr(now.getFullYear(), now.getMonth(), now.getDate());
   const isPast = new Date(selectedDate) < new Date(formatDateStr(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -181,21 +214,26 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      {/* Month Navigation */}
-      <div className="px-4 py-3 flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <h2 className="text-base font-medium text-foreground">
-          {currentYear}年{currentMonth + 1}月
-        </h2>
-        <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-          <ChevronRight className="w-5 h-5" />
-        </Button>
-      </div>
+      {/* Calendar Section with Swipe */}
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="px-4"
+      >
+        {/* Month Navigation */}
+        <div className="py-3 flex items-center justify-between">
+          <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <h2 className="text-base font-medium text-foreground">
+            {currentYear}年{currentMonth + 1}月
+          </h2>
+          <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
 
-      {/* Calendar Grid */}
-      <div className="px-4">
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 mb-2">
           {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
@@ -219,11 +257,11 @@ export default function CalendarPage() {
                 <button
                   key={day.dateStr}
                   onClick={() => setSelectedDate(day.dateStr)}
-                  className={`flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
+                  className={`flex flex-col items-center py-3 px-1 rounded-lg transition-all relative ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
                       : day.isToday
-                      ? 'bg-primary/10 text-primary'
+                      ? 'bg-primary/10 text-primary ring-1 ring-primary/30'
                       : 'text-foreground hover:bg-muted'
                   }`}
                 >
@@ -231,8 +269,11 @@ export default function CalendarPage() {
                   <WeatherIcon className={`w-3 h-3 mt-1 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`} />
                   {hasWorn && (
                     <div className="flex gap-0.5 mt-1">
-                      <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-primary-foreground' : 'bg-primary'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-primary-foreground' : 'bg-primary'}`} />
                     </div>
+                  )}
+                  {day.isToday && !isSelected && (
+                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
                   )}
                 </button>
               );
@@ -254,25 +295,31 @@ export default function CalendarPage() {
                 <button
                   key={day.dateStr}
                   onClick={() => setSelectedDate(day.dateStr)}
-                  className={`flex flex-col items-center py-2 rounded-lg transition-all ${
+                  className={`flex flex-col items-center py-2 rounded-lg transition-all relative ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
                       : day.isToday
-                      ? 'bg-primary/10 text-primary'
+                      ? 'bg-primary/10 text-primary ring-1 ring-primary/30'
                       : 'text-foreground hover:bg-muted'
                   }`}
                 >
                   <span className="text-sm font-medium">{day.date}</span>
                   {hasWorn && (
                     <div className="flex gap-0.5 mt-1">
-                      <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-primary-foreground' : 'bg-primary'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-primary-foreground' : 'bg-primary'}`} />
                     </div>
+                  )}
+                  {day.isToday && !isSelected && (
+                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
                   )}
                 </button>
               );
             })}
           </div>
         )}
+
+        {/* Swipe hint */}
+        <p className="text-xs text-muted-foreground text-center mt-2">左右滑动切换月份</p>
       </div>
 
       {/* Date Detail Section */}
@@ -314,7 +361,7 @@ export default function CalendarPage() {
                         }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" />
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                       </div>
                     ))}
                   </div>
@@ -334,9 +381,10 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="text-center py-6">
-              <Shirt className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
               <p className="text-sm text-muted-foreground">
-                {isFuture ? '还未到来' : isToday ? '今天还没有记录' : '这天没有记录'}
+                {isFuture ? '还未到来，敬请期待' : isToday ? '今天还没有记录，快去搭配吧' : '这天没有记录'}
               </p>
             </div>
           )}
@@ -407,7 +455,7 @@ export default function CalendarPage() {
                       setIsRecordSheetOpen(false);
                       toast.success('已记录穿着');
                     }}
-                    className="aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all text-left"
+                    className="aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all text-left relative"
                   >
                     <div className="relative w-full h-full p-2">
                       {outfit.items.slice(0, 2).map((item, index) => (
@@ -420,7 +468,7 @@ export default function CalendarPage() {
                           }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" />
+                          <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
                         </div>
                       ))}
                     </div>
@@ -432,7 +480,8 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Shirt className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/empty-styling.jpeg" alt="暂无搭配" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
                 <p className="text-sm text-muted-foreground">暂无搭配方案</p>
                 <Button variant="outline" className="mt-3" onClick={() => { setIsRecordSheetOpen(false); handleGoToStyling(); }}>
                   <Plus className="w-4 h-4 mr-2" />

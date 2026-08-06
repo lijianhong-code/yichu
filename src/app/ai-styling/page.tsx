@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Send,
   Sparkles,
   ChevronLeft,
   RefreshCw,
   Check,
-  ArrowRightLeft,
   Lock,
   Unlock,
   History,
   MoreHorizontal,
-  Shirt,
   ImageIcon,
   Plus,
   Pencil,
@@ -29,9 +27,10 @@ import {
   Sun,
   ClipboardList,
   Loader2,
+  Star,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -103,11 +102,13 @@ export default function AIStylingPage() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Candidate state
   const [candidates, setCandidates] = useState<CandidateOutfit[]>([]);
   const [previewCandidateIndex, setPreviewCandidateIndex] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // AI Complete state
   const [isAICompleting, setIsAICompleting] = useState(false);
@@ -119,6 +120,10 @@ export default function AIStylingPage() {
   const [trayOpen, setTrayOpen] = useState(false);
   const [editHistory, setEditHistory] = useState<{ items: CanvasItem[] }[]>([]);
   const [editHistoryIndex, setEditHistoryIndex] = useState(-1);
+
+  // Reference image state
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? { name: '', explanation: '', items: [] as WardrobeItem[] };
 
@@ -198,7 +203,6 @@ export default function AIStylingPage() {
       const data = await response.json();
 
       if (data.success && data.candidates?.length > 0) {
-        // Map API response to CandidateOutfit format
         const apiCandidates: CandidateOutfit[] = data.candidates.map((c: {
           id: string;
           label: string;
@@ -226,6 +230,18 @@ export default function AIStylingPage() {
     }
   };
 
+  // Cancel loading
+  const handleCancelLoading = () => {
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancelLoading = () => {
+    setShowCancelDialog(false);
+    setPageState('empty');
+    setProgress(0);
+    setCurrentStage(0);
+  };
+
   // Loading animation (progress bar only, API controls state transition)
   useEffect(() => {
     if (pageState !== 'loading') return;
@@ -237,7 +253,7 @@ export default function AIStylingPage() {
       return setTimeout(() => {
         setCurrentStage(index);
         totalElapsed = loadingStages.slice(0, index + 1).reduce((sum, s) => sum + s.duration, 0);
-        setProgress(Math.round((totalElapsed / totalDuration) * 90)); // Cap at 90%, API controls final 100%
+        setProgress(Math.round((totalElapsed / totalDuration) * 90));
       }, loadingStages.slice(0, index).reduce((sum, s) => sum + s.duration, 0));
     });
 
@@ -266,7 +282,6 @@ export default function AIStylingPage() {
 
   // Exit editing - check for unsaved changes
   const handleExitEditing = () => {
-    // Check if there are unsaved changes
     const hasChanges = canvasItems.length > 0 && editHistoryIndex > 0;
     if (hasChanges) {
       setShowUnsavedDialog(true);
@@ -283,7 +298,6 @@ export default function AIStylingPage() {
   };
 
   const handleDiscardChanges = () => {
-    // Reset to original candidate
     if (candidates[previewCandidateIndex]) {
       initCanvasFromOutfit(candidates[previewCandidateIndex].outfit);
     }
@@ -352,7 +366,6 @@ export default function AIStylingPage() {
         
         data.suggestions.forEach((s: { item: WardrobeItem; reason: string }) => {
           const suggested = s.item;
-          // Avoid duplicates
           if (!newItems.some((ni) => ni.item.id === suggested.id)) {
             newItems.push({
               id: `canvas-${suggested.id}`,
@@ -374,7 +387,6 @@ export default function AIStylingPage() {
         setAiCompleteResults(results);
         setShowAICompleteResults(true);
         
-        // Auto-hide results after 5 seconds
         setTimeout(() => setShowAICompleteResults(false), 5000);
       } else {
         setAiError('AI 没有找到合适的补充单品');
@@ -383,7 +395,6 @@ export default function AIStylingPage() {
       console.error('[AI Complete] Error:', error);
       setAiError('AI 补全失败，已使用规则匹配');
       
-      // Fallback: use Chinese category names
       const existingCategories = new Set(canvasItems.map((ci) => ci.item.category));
       const neededCategories = ['下装', '鞋', '外套', '包'].filter((c) => !existingCategories.has(c));
 
@@ -410,7 +421,7 @@ export default function AIStylingPage() {
     }
   };
 
-  // Undo AI complete - remove the last added AI-suggested items
+  // Undo AI complete
   const handleUndoAIComplete = () => {
     const nonAISuggested = canvasItems.filter(item => !item.isAISuggested);
     setCanvasItems(nonAISuggested);
@@ -421,7 +432,6 @@ export default function AIStylingPage() {
 
   // "今天穿" - mark current outfit as worn today
   const handleWearToday = () => {
-    // Get outfit from either AI candidates or manual canvas
     let outfitItems: WardrobeItem[] = [];
     let outfitName = '';
     let outfitId = '';
@@ -438,7 +448,6 @@ export default function AIStylingPage() {
       return;
     }
 
-    // Create outfit if not exists
     const outfit: Outfit = {
       id: outfitId,
       name: outfitName,
@@ -451,7 +460,6 @@ export default function AIStylingPage() {
       explanation: '',
     };
 
-    // Save outfit and record
     addOutfit(outfit);
     const today = new Date().toISOString().split('T')[0];
     addRecord({
@@ -517,6 +525,33 @@ export default function AIStylingPage() {
     setSelectedItem({ ...selectedItem, scale: 1 });
   };
 
+  // Handle reference image upload
+  const handleReferenceImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setReferenceImage(event.target?.result as string);
+        toast.success('参考图已上传', 'AI 将参考这张图片进行搭配');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Calculate outfit rating
+  const calculateRating = () => {
+    if (!previewOutfit.items.length) return 0;
+    // Simple rating based on item count and variety
+    const categories = new Set(previewOutfit.items.map(i => i.category));
+    const varietyScore = Math.min(categories.size / 4, 1) * 2;
+    const completenessScore = Math.min(previewOutfit.items.length / 3, 1) * 3;
+    return Math.round((varietyScore + completenessScore) * 10) / 10;
+  };
+
   return (
     <TooltipProvider>
       <div className={`min-h-screen bg-background ${pageState === 'editing' ? 'pb-4' : 'pb-24'}`}>
@@ -576,7 +611,15 @@ export default function AIStylingPage() {
 
         {/* ==================== PERMANENT OUTFIT AREA (常驻搭配区) ==================== */}
         <div className="px-4 pt-4">
-          <div className="rounded-xl outfit-stage noise-texture relative overflow-hidden" style={{ minHeight: '48vh', maxHeight: '56vh' }}>
+          <div className={`rounded-xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '48vh', maxHeight: '56vh' }}>
+            {/* Empty state illustration */}
+            {pageState === 'empty' && !candidates.length && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+                <img src="/empty-styling.jpeg" alt="" className="w-32 h-32 object-contain opacity-60 mb-4" />
+                <p className="text-sm text-muted-foreground text-center">描述你的需求，AI 将为你智能搭配</p>
+              </div>
+            )}
+
             {/* CANVAS - Always visible */}
             <OutfitCanvas
               initialItems={pageState === 'editing' ? canvasItems : pageState === 'preview' ? (candidates[previewCandidateIndex]?.outfit.items || []).map((item, idx) => {
@@ -630,6 +673,14 @@ export default function AIStylingPage() {
                     ))}
                   </div>
                   <Progress value={progress} className="h-1.5 rounded-full" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full text-xs text-muted-foreground"
+                    onClick={handleCancelLoading}
+                  >
+                    取消生成
+                  </Button>
                 </div>
               </div>
             )}
@@ -638,26 +689,33 @@ export default function AIStylingPage() {
 
         {/* ==================== CONTEXTUAL BOTTOM ACTION AREA ==================== */}
         
-        {/* EMPTY STATE actions */}
+        {/* EMPTY STATE Actions */}
         {pageState === 'empty' && (
           <div className="px-4 pt-5 space-y-3">
             {/* AI error message */}
             {aiError && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
-                <X className="h-4 w-4 flex-shrink-0" />
-                <span>{aiError}</span>
-                <button onClick={() => setAiError(null)} className="ml-auto text-destructive/60 hover:text-destructive">
+                <XCircle className="h-4 w-4 flex-shrink-0" />
+                <span className="flex-1">{aiError}</span>
+                <button onClick={() => setAiError(null)} className="text-destructive/60 hover:text-destructive">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
+            
             {/* AI input area - OpenAI style */}
             <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                className="min-h-[80px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
+                className="min-h-[80px] max-h-[160px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
+                style={{ height: 'auto' }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 160) + 'px';
+                }}
               />
               {/* Action bar below input */}
               <div className="flex items-center justify-between px-3 pb-2">
@@ -665,28 +723,38 @@ export default function AIStylingPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1.5"
+                    className={`h-7 px-2.5 rounded-full text-xs gap-1.5 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                    onClick={handleReferenceImageClick}
                   >
                     <ImageIcon className="h-3.5 w-3.5" />
-                    参考图
+                    {referenceImage ? '已添加' : '参考图'}
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                   <div className="h-3 w-px bg-border/40" />
-                  {(quickScenarios || []).slice(0, 3).map((scenario) => (
-                    <Button
-                      key={scenario.label}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setInputValue(scenario.label)}
-                      className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1"
-                    >
-                      {iconMap[scenario.icon] || null}
-                      {scenario.label}
-                    </Button>
-                  ))}
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                    {(quickScenarios || []).map((scenario) => (
+                      <Button
+                        key={scenario.label}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setInputValue(scenario.label)}
+                        className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1 shrink-0"
+                      >
+                        {iconMap[scenario.icon] || null}
+                        {scenario.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
                 <Button
                   size="icon"
-                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-sm"
+                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-sm shrink-0"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
@@ -717,7 +785,7 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* PREVIEW STATE actions */}
+        {/* PREVIEW STATE ACTIONS */}
         {pageState === 'preview' && (
           <div className="px-4 pt-4 space-y-3">
             {/* Candidate thumbnails - 3 schemes - click to switch only */}
@@ -725,7 +793,13 @@ export default function AIStylingPage() {
               {(candidates || []).map((candidate, index) => (
                 <button
                   key={candidate.id}
-                  onClick={() => setPreviewCandidateIndex(index)}
+                  onClick={() => {
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                      setPreviewCandidateIndex(index);
+                      setIsTransitioning(false);
+                    }, 150);
+                  }}
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md card-interactive shrink-0 min-w-[100px] ${
                     index === previewCandidateIndex
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -748,6 +822,23 @@ export default function AIStylingPage() {
                   </span>
                 </button>
               ))}
+            </div>
+
+            {/* AI Rating */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-3.5 w-3.5 ${
+                      star <= Math.round(calculateRating() / 2)
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-muted-foreground/30'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">AI 推荐指数 {calculateRating().toFixed(1)}</span>
             </div>
 
             {/* Explanation */}
@@ -782,7 +873,7 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* EDITING STATE actions */}
+        {/* EDITING STATE ACTIONS */}
         {pageState === 'editing' && (
           <div className="px-4 pt-3 space-y-3">
             {/* Selected item toolbar */}
@@ -924,7 +1015,7 @@ export default function AIStylingPage() {
               className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-sm"
               onClick={handleExitEditing}
             >
-              完成编辑
+              保存搭配
             </Button>
 
             {/* AI Complete Results Notification */}
@@ -991,6 +1082,34 @@ export default function AIStylingPage() {
                 onClick={handleDiscardChanges}
               >
                 放弃修改
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Loading Confirmation Dialog */}
+        <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <DialogContent className="sm:max-w-sm rounded-xl">
+            <DialogHeader>
+              <DialogTitle className="text-base">取消生成？</DialogTitle>
+              <DialogDescription>
+                确定要取消当前的 AI 搭配生成吗？
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-10 rounded-lg"
+                onClick={() => setShowCancelDialog(false)}
+              >
+                继续生成
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 h-10 rounded-lg"
+                onClick={confirmCancelLoading}
+              >
+                取消生成
               </Button>
             </div>
           </DialogContent>
@@ -1072,7 +1191,10 @@ export default function AIStylingPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">暂无历史方案</p>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <img src="/empty-calendar.jpeg" alt="" className="w-24 h-24 object-contain opacity-60 mb-4" />
+                    <p className="text-sm text-muted-foreground">暂无历史方案</p>
+                  </div>
                 )}
               </div>
             </ScrollArea>

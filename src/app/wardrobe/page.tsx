@@ -5,7 +5,6 @@ import {
   Search,
   Plus,
   X,
-  ChevronDown,
   Shirt,
   Sparkles,
   Edit3,
@@ -18,6 +17,7 @@ import {
   Clock,
   Check,
   AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,10 +46,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
-import { type ClothingItem, type ClothingStatus, type ClothingCategory, CATEGORIES } from '@/lib/mock-data';
+import { type ClothingItem, type ClothingStatus, CATEGORIES } from '@/lib/mock-data';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   available: { label: '可用', color: 'bg-muted text-muted-foreground', icon: Shirt },
@@ -64,6 +63,7 @@ export default function WardrobePage() {
   const wardrobeItems = state.items;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'items' | 'outfits'>('items');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
@@ -73,8 +73,11 @@ export default function WardrobePage() {
   const [editItem, setEditItem] = useState<ClothingItem | null>(null);
   const [uploadedItems, setUploadedItems] = useState<ClothingItem[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [fabOffset, setFabOffset] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
 
   // Item counts per category
   const itemCounts = useMemo(() => {
@@ -131,12 +134,33 @@ export default function WardrobePage() {
     },
   ], [wardrobeItems]);
 
+  // Scroll handling for FAB
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setFabOffset(Math.min(scrollY * 0.3, 40));
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Category scroll hint
+  useEffect(() => {
+    const el = categoryScrollRef.current;
+    if (!el) return;
+    const checkScroll = () => {
+      setShowScrollHint(el.scrollWidth > el.clientWidth && el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    };
+    checkScroll();
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    return () => el.removeEventListener('scroll', checkScroll);
+  }, []);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setIsAnalyzing(true);
-    // Simulate AI recognition
     setTimeout(() => {
       const newItems: ClothingItem[] = files.map((file, index) => ({
         id: `new-${Date.now()}-${index}`,
@@ -195,23 +219,11 @@ export default function WardrobePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact Header */}
+      {/* Simplified Header - 2 layers */}
       <header className="sticky top-0 z-40 glass-surface border-b border-border">
         <div className="px-4 pt-[env(safe-area-inset-top)]">
-          {/* Title Row */}
-          <div className="flex items-center justify-between h-12">
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">我的衣橱</h1>
-            </div>
-            <div className="flex items-center gap-1">
-              <Badge variant="secondary" className="text-xs">
-                {stats.totalItems} 件
-              </Badge>
-            </div>
-          </div>
-
-          {/* View Mode + Search in one row */}
-          <div className="flex items-center gap-2 pb-2">
+          {/* Layer 1: Title + View Mode + Search Toggle */}
+          <div className="flex items-center gap-2 h-12">
             <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('items')}
@@ -236,44 +248,69 @@ export default function WardrobePage() {
                 搭配
               </button>
             </div>
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索衣物..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 bg-muted/50 border-none text-sm"
-              />
-            </div>
+            <div className="flex-1" />
+            <Badge variant="secondary" className="text-xs">
+              {stats.totalItems} 件
+            </Badge>
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
           </div>
 
-          {/* Category Chips */}
-          <div className="flex items-center gap-2 pb-2 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setActiveCategory('all')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                activeCategory === 'all'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              全部
-              <span className="text-xs opacity-70">{itemCounts.all}</span>
-            </button>
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                  activeCategory === cat.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
+          {/* Layer 2: Search (collapsible) + Category Chips */}
+          <div className={`overflow-hidden transition-all duration-200 ${showSearch ? 'max-h-24 pb-2' : 'max-h-12 pb-2'}`}>
+            {showSearch && (
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索衣物名称、颜色..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 bg-muted/50 border-none text-sm"
+                  autoFocus
+                />
+              </div>
+            )}
+            {/* Category Chips with scroll hint */}
+            <div className="relative">
+              <div
+                ref={categoryScrollRef}
+                className="flex items-center gap-2 overflow-x-auto no-scrollbar"
               >
-                {cat.label}
-                <span className="text-xs opacity-70">{itemCounts[cat.key] || 0}</span>
-              </button>
-            ))}
+                <button
+                  onClick={() => setActiveCategory('all')}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
+                    activeCategory === 'all'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  全部
+                  <span className="text-xs opacity-70">{itemCounts.all}</span>
+                </button>
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setActiveCategory(cat.key)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
+                      activeCategory === cat.key
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {cat.label}
+                    <span className="text-xs opacity-70">{itemCounts[cat.key] || 0}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Scroll hint gradient */}
+              {showScrollHint && (
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -282,122 +319,148 @@ export default function WardrobePage() {
       <div className="px-4 py-4">
         {viewMode === 'items' ? (
           /* Items Grid */
-          <div className="grid grid-cols-2 gap-3">
-            {filteredItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5 text-left"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  loading="lazy"
-                  className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-200"
-                />
+          filteredItems.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4">
+              {filteredItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
+                  className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5 text-left"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    loading="lazy"
+                    className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-200"
+                  />
 
-                {/* Status Badge */}
-                {item.status !== 'available' && (
-                  <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_CONFIG[item.status]?.color || ''}`}>
-                    {STATUS_CONFIG[item.status]?.label || item.status}
+                  {/* Status Badge */}
+                  {item.status !== 'available' && (
+                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_CONFIG[item.status]?.color || ''}`}>
+                      {STATUS_CONFIG[item.status]?.label || item.status}
+                    </div>
+                  )}
+
+                  {/* Color Indicator */}
+                  <div className="absolute top-2 right-2 w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: item.primaryColor }} />
+
+                  {/* Item Info */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                    <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-white/70 text-xs">{item.subCategory}</p>
+                      {item.wearCount > 0 && (
+                        <span className="text-white/50 text-[10px]">穿过{item.wearCount}次</span>
+                      )}
+                    </div>
                   </div>
-                )}
-
-                {/* Item Info */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-white/70 text-xs">{item.subCategory}</p>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* Empty State with Illustration */
+            <div className="flex flex-col items-center justify-center py-16">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/empty-wardrobe.jpeg" alt="衣橱为空" className="w-40 h-40 object-contain mb-4 opacity-80" />
+              <p className="text-sm text-muted-foreground mb-2">
+                {searchQuery ? '没有找到匹配的衣物' : '衣橱还是空的'}
+              </p>
+              {!searchQuery && (
+                <Button onClick={() => setIsUploadSheetOpen(true)} className="bg-primary hover:bg-primary-hover mt-2">
+                  <Plus className="w-4 h-4 mr-2" />
+                  添加第一件衣物
+                </Button>
+              )}
+            </div>
+          )
         ) : (
           /* Outfits Grid */
-          <div className="grid grid-cols-2 gap-3">
-            {mockOutfits.map((outfit) => (
-              <div
-                key={outfit.id}
-                className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5"
-              >
-                {/* Outfit Preview - Stacked Items */}
-                <div className="w-full h-full p-3">
-                  <div className="relative w-full h-full">
+          mockOutfits.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4">
+              {mockOutfits.map((outfit) => (
+                <div
+                  key={outfit.id}
+                  className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5"
+                >
+                  {/* Outfit Preview - Horizontal Layout */}
+                  <div className="w-full h-full p-3 flex items-center justify-center gap-1">
                     {outfit.items.slice(0, 3).map((item, index) => (
                       <div
                         key={item.id}
-                        className="absolute inset-0 rounded-md bg-background/80 shadow-sm overflow-hidden transition-transform group-hover:scale-[1.02]"
-                        style={{
-                          transform: `translateY(${index * 4}px) scale(${1 - index * 0.05})`,
-                          zIndex: 3 - index,
-                        }}
+                        className="flex-1 h-full rounded-md bg-background/80 shadow-sm overflow-hidden transition-transform group-hover:scale-[1.02]"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.imageUrl}
                           alt={item.name}
                           loading="lazy"
-                          className="w-full h-full object-contain p-2"
+                          className="w-full h-full object-contain p-1"
                         />
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* Item Count Badge */}
-                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/90 flex items-center justify-center text-xs font-medium text-foreground shadow-sm">
-                  {outfit.items.length}
-                </div>
-
-                {/* AI Badge */}
-                {outfit.isAI && (
-                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
-                    AI
+                  {/* Item Count Badge */}
+                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/90 flex items-center justify-center text-xs font-medium text-foreground shadow-sm">
+                    {outfit.items.length}
                   </div>
-                )}
 
-                {/* Outfit Info */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-medium truncate">{outfit.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-white/70 text-xs capitalize">{outfit.occasion}</span>
-                    <span className="text-white/50 text-xs">·</span>
-                    <span className="text-white/70 text-xs">{outfit.lastWorn}</span>
+                  {/* AI Badge */}
+                  {outfit.isAI && (
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
+                      AI
+                    </div>
+                  )}
+
+                  {/* Outfit Info */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                    <p className="text-white text-sm font-medium truncate">{outfit.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-white/70 text-xs capitalize">{outfit.occasion}</span>
+                      <span className="text-white/50 text-xs">·</span>
+                      <span className="text-white/70 text-xs">{outfit.lastWorn}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {filteredItems.length === 0 && viewMode === 'items' && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Shirt className="w-12 h-12 mb-4 opacity-50" />
-            <p className="text-sm">没有找到匹配的衣物</p>
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/empty-styling.jpeg" alt="暂无搭配" className="w-40 h-40 object-contain mb-4 opacity-80" />
+              <p className="text-sm text-muted-foreground mb-2">还没有保存的搭配</p>
+              <Button onClick={() => window.location.href = '/ai-styling'} className="bg-primary hover:bg-primary-hover mt-2">
+                <Sparkles className="w-4 h-4 mr-2" />
+                去创建搭配
+              </Button>
+            </div>
+          )
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB - with scroll offset and view-mode awareness */}
       <button
-        onClick={() => setIsUploadSheetOpen(true)}
-        className="fixed bottom-28 right-4 z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}
+        onClick={() => viewMode === 'items' ? setIsUploadSheetOpen(true) : (window.location.href = '/ai-styling')}
+        className="fixed z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        style={{
+          bottom: `calc(6rem + ${fabOffset}px)`,
+          right: 'max(1rem, calc((100vw - 36rem) / 2 + 1rem))',
+        }}
       >
-        <Plus className="w-6 h-6" />
+        {viewMode === 'items' ? <Plus className="w-6 h-6" /> : <Sparkles className="w-5 h-5" />}
       </button>
 
-      {/* Item Detail Dialog */}
-      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>衣物详情</DialogTitle>
-            <DialogDescription>查看衣物详细信息</DialogDescription>
-          </DialogHeader>
+      {/* Item Detail Sheet - Bottom Sheet instead of Dialog */}
+      <Sheet open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>衣物详情</SheetTitle>
+          </SheetHeader>
           {selectedItem && (
-            <div className="space-y-4">
-              {/* Large Image */}
-              <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+            <div className="overflow-y-auto h-full pb-4">
+              {/* Large Image - 4:5 ratio */}
+              <div className="aspect-[4/5] rounded-lg overflow-hidden bg-muted mx-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedItem.imageUrl}
@@ -406,8 +469,8 @@ export default function WardrobePage() {
                 />
               </div>
 
-              {/* Info */}
-              <div className="space-y-3">
+              {/* Info - List style with icons */}
+              <div className="px-4 mt-4 space-y-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{selectedItem.name}</h3>
                   <p className="text-sm text-muted-foreground">{selectedItem.subCategory}</p>
@@ -417,86 +480,95 @@ export default function WardrobePage() {
                   <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">颜色：</span>
-                    <span className="text-foreground">{selectedItem.primaryColor}</span>
+                {/* Attribute List */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedItem.primaryColor }} />
+                    <span className="text-sm text-muted-foreground">颜色</span>
+                    <span className="text-sm text-foreground ml-auto">{selectedItem.primaryColor}</span>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">材质：</span>
-                    <span className="text-foreground">{selectedItem.material}</span>
+                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
+                    <Shirt className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">分类</span>
+                    <span className="text-sm text-foreground ml-auto">{selectedItem.category} / {selectedItem.subCategory}</span>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">季节：</span>
-                    <span className="text-foreground">{selectedItem.season.join(', ')}</span>
+                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">穿着次数</span>
+                    <span className="text-sm text-foreground ml-auto">{selectedItem.wearCount} 次</span>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">穿着次数：</span>
-                    <span className="text-foreground">{selectedItem.wearCount} 次</span>
+                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
+                    <Heart className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">季节</span>
+                    <span className="text-sm text-foreground ml-auto">{selectedItem.season.join(', ')}</span>
+                  </div>
+                  <div className="flex items-center gap-3 py-2">
+                    <Hand className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">材质</span>
+                    <span className="text-sm text-foreground ml-auto">{selectedItem.material}</span>
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 pt-2">
+              <div className="px-4 mt-4 flex items-center gap-2">
                 <Button
                   onClick={() => {
                     setSelectedItem(null);
-                    // Navigate to AI styling with this item
                     window.location.href = `/ai-styling?item=${selectedItem.id}`;
                   }}
-                  className="flex-1 bg-primary hover:bg-primary-hover"
+                  className="flex-1 h-11 bg-primary hover:bg-primary-hover"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   用它搭配
                 </Button>
                 <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" className="h-11 w-11">
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="bottom" className="h-auto">
+                  <SheetContent side="bottom" className="h-auto rounded-t-2xl">
                     <SheetHeader>
                       <SheetTitle>更多操作</SheetTitle>
                     </SheetHeader>
                     <div className="py-4 space-y-2">
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className="w-full justify-start h-12"
                         onClick={() => {
                           setEditItem({ ...selectedItem });
                           setIsMoreSheetOpen(false);
                         }}
                       >
-                        <Edit3 className="w-4 h-4 mr-2" />
+                        <Edit3 className="w-4 h-4 mr-3" />
                         编辑信息
                       </Button>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className="w-full justify-start h-12"
                         onClick={() => handleBatchStatus('washing')}
                       >
-                        <Hand className="w-4 h-4 mr-2" />
+                        <Hand className="w-4 h-4 mr-3" />
                         标记为洗衣中
                       </Button>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className="w-full justify-start h-12"
                         onClick={() => handleBatchStatus('lent')}
                       >
-                        <Clock className="w-4 h-4 mr-2" />
+                        <Clock className="w-4 h-4 mr-3" />
                         标记为已借出
                       </Button>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start text-destructive"
+                        className="w-full justify-start h-12 text-destructive"
                         onClick={() => {
                           setDeleteConfirmItem(selectedItem);
                           setIsMoreSheetOpen(false);
                         }}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        <Trash2 className="w-4 h-4 mr-3" />
                         删除单品
                       </Button>
                     </div>
@@ -505,12 +577,12 @@ export default function WardrobePage() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Edit Dialog */}
       <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] rounded-xl">
           <DialogHeader>
             <DialogTitle>编辑衣物</DialogTitle>
             <DialogDescription>修改衣物信息</DialogDescription>
@@ -567,7 +639,7 @@ export default function WardrobePage() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
@@ -588,7 +660,7 @@ export default function WardrobePage() {
 
       {/* Upload Sheet */}
       <Sheet open={isUploadSheetOpen} onOpenChange={setIsUploadSheetOpen}>
-        <SheetContent side="bottom" className="h-auto">
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
           <SheetHeader>
             <SheetTitle>添加衣物</SheetTitle>
           </SheetHeader>
