@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +58,7 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 export default function CalendarPage() {
+  const router = useRouter();
   const { state, getRecordsByDate, addRecord } = useWardrobe();
   const records = state.records;
   const outfits = state.outfits;
@@ -128,8 +130,7 @@ export default function CalendarPage() {
       toast.info('今天已经记录过穿着了');
       return;
     }
-    // Navigate to AI styling
-    window.location.href = '/ai-styling';
+    router.push('/ai-styling');
   };
 
   const handleRewear = () => {
@@ -137,7 +138,7 @@ export default function CalendarPage() {
       toast.warning('暂无可重穿的搭配');
       return;
     }
-    window.location.href = '/ai-styling';
+    router.push('/ai-styling');
   };
 
   const handleRecord = () => {
@@ -145,7 +146,7 @@ export default function CalendarPage() {
   };
 
   const handleGoToStyling = () => {
-    window.location.href = '/ai-styling';
+    router.push('/ai-styling');
   };
 
   // Swipe handlers

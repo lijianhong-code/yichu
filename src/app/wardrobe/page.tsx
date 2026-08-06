@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Plus,
@@ -48,7 +49,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
-import { type ClothingItem, type ClothingStatus, CATEGORIES } from '@/lib/mock-data';
+import { type ClothingItem, type ClothingStatus, CATEGORIES, type Outfit } from '@/lib/mock-data';
+import { OutfitCanvas } from '@/components/outfit-canvas';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   available: { label: '可用', color: 'bg-muted text-muted-foreground', icon: Shirt },
@@ -59,6 +61,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 export default function WardrobePage() {
+  const router = useRouter();
   const { state, addItem, updateItem, deleteItem, getStats } = useWardrobe();
   const wardrobeItems = state.items;
 
@@ -78,6 +81,7 @@ export default function WardrobePage() {
   const [uploadMode, setUploadMode] = useState<'single' | 'batch'>('single');
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollHint, setShowScrollHint] = useState(true);
+  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
 
   // Item counts per category
   const itemCounts = useMemo(() => {
@@ -106,33 +110,8 @@ export default function WardrobePage() {
     return items;
   }, [wardrobeItems, activeCategory, searchQuery]);
 
-  // Mock outfits
-  const mockOutfits = useMemo(() => [
-    {
-      id: 'outfit-1',
-      name: '春日通勤',
-      items: wardrobeItems.slice(0, 3),
-      occasion: 'work' as const,
-      lastWorn: '2天前',
-      isAI: true,
-    },
-    {
-      id: 'outfit-2',
-      name: '周末约会',
-      items: wardrobeItems.slice(2, 5),
-      occasion: 'date' as const,
-      lastWorn: '5天前',
-      isAI: true,
-    },
-    {
-      id: 'outfit-3',
-      name: '运动休闲',
-      items: wardrobeItems.slice(4, 7),
-      occasion: 'casual' as const,
-      lastWorn: '1周前',
-      isAI: false,
-    },
-  ], [wardrobeItems]);
+  // Outfits from store
+  const storeOutfits = state.outfits;
 
   // Scroll handling for FAB
   useEffect(() => {
@@ -376,29 +355,29 @@ export default function WardrobePage() {
           )
         ) : (
           /* Outfits Grid */
-          mockOutfits.length > 0 ? (
+          storeOutfits.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
-              {mockOutfits.map((outfit) => (
-                <div
+              {storeOutfits.map((outfit) => (
+                <button
                   key={outfit.id}
-                  className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5"
+                  onClick={() => setSelectedOutfit(outfit)}
+                  className="group relative aspect-[4/5] rounded-lg overflow-hidden bg-muted shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5 text-left"
                 >
-                  {/* Outfit Preview - Horizontal Layout */}
-                  <div className="w-full h-full p-3 flex items-center justify-center gap-1">
-                    {outfit.items.slice(0, 3).map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="flex-1 h-full rounded-md bg-background/80 shadow-sm overflow-hidden transition-transform group-hover:scale-[1.02]"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          loading="lazy"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      </div>
-                    ))}
+                  {/* Outfit Preview - Canvas Layout */}
+                  <div className="w-full h-full p-2">
+                    <OutfitCanvas
+                      initialItems={outfit.items.map((item, index) => ({
+                        id: `${outfit.id}-${item.id}-${index}`,
+                        itemId: item.id,
+                        item,
+                        x: 20 + (index * 25),
+                        y: 30 + (index * 15),
+                        scale: 0.4,
+                        locked: false,
+                        zIndex: index,
+                      }))}
+                      editable={false}
+                    />
                   </div>
 
                   {/* Item Count Badge */}
@@ -407,7 +386,7 @@ export default function WardrobePage() {
                   </div>
 
                   {/* AI Badge */}
-                  {outfit.isAI && (
+                  {outfit.source === 'ai_text' && (
                     <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                       AI
                     </div>
@@ -417,12 +396,12 @@ export default function WardrobePage() {
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                     <p className="text-white text-sm font-medium truncate">{outfit.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-white/70 text-xs capitalize">{outfit.occasion}</span>
+                      <span className="text-white/70 text-xs">{outfit.occasion}</span>
                       <span className="text-white/50 text-xs">·</span>
-                      <span className="text-white/70 text-xs">{outfit.lastWorn}</span>
+                      <span className="text-white/70 text-xs">{outfit.createdAt}</span>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -430,7 +409,7 @@ export default function WardrobePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/empty-styling.jpeg" alt="暂无搭配" className="w-40 h-40 object-contain mb-4 opacity-80" />
               <p className="text-sm text-muted-foreground mb-2">还没有保存的搭配</p>
-              <Button onClick={() => window.location.href = '/ai-styling'} className="bg-primary hover:bg-primary-hover mt-2">
+              <Button onClick={() => router.push('/ai-styling')} className="bg-primary hover:bg-primary-hover mt-2">
                 <Sparkles className="w-4 h-4 mr-2" />
                 去创建搭配
               </Button>
@@ -441,7 +420,7 @@ export default function WardrobePage() {
 
       {/* FAB - with scroll offset and view-mode awareness */}
       <button
-        onClick={() => viewMode === 'items' ? setIsUploadSheetOpen(true) : (window.location.href = '/ai-styling')}
+        onClick={() => viewMode === 'items' ? setIsUploadSheetOpen(true) : router.push('/ai-styling')}
         className="fixed z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         style={{
           bottom: `calc(6rem + ${fabOffset}px)`,
@@ -515,7 +494,7 @@ export default function WardrobePage() {
                 <Button
                   onClick={() => {
                     setSelectedItem(null);
-                    window.location.href = `/ai-styling?item=${selectedItem.id}`;
+                    router.push(`/ai-styling?item=${selectedItem.id}`);
                   }}
                   className="flex-1 h-11 bg-primary hover:bg-primary-hover"
                 >
@@ -728,6 +707,88 @@ export default function WardrobePage() {
             className="hidden"
             onChange={handleFileUpload}
           />
+        </SheetContent>
+      </Sheet>
+
+      {/* Outfit Detail Sheet */}
+      <Sheet open={!!selectedOutfit} onOpenChange={() => setSelectedOutfit(null)}>
+        <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>{selectedOutfit?.name || '搭配详情'}</SheetTitle>
+          </SheetHeader>
+          {selectedOutfit && (
+            <div className="overflow-y-auto h-full pb-4">
+              {/* Canvas Preview */}
+              <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted mx-4 mb-4">
+                <OutfitCanvas
+                  initialItems={selectedOutfit.items.map((item, index) => {
+                    const totalItems = selectedOutfit.items.length;
+                    const cols = Math.min(3, totalItems);
+                    const row = Math.floor(index / cols);
+                    const col = index % cols;
+                    return {
+                      id: `detail-${item.id}-${index}`,
+                      itemId: item.id,
+                      item,
+                      x: 15 + col * 28,
+                      y: 10 + row * 35,
+                      scale: 0.8,
+                      locked: true,
+                      zIndex: index,
+                    };
+                  })}
+                  editable={false}
+                />
+              </div>
+
+              {/* Outfit Info */}
+              <div className="px-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{selectedOutfit.occasion}</Badge>
+                  <Badge variant="outline">{selectedOutfit.style}</Badge>
+                  <Badge variant="outline">{selectedOutfit.season}</Badge>
+                  {selectedOutfit.source === 'ai_text' && (
+                    <Badge className="bg-accent text-accent-foreground">AI</Badge>
+                  )}
+                </div>
+
+                {selectedOutfit.explanation && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedOutfit.explanation}</p>
+                )}
+
+                {/* Items List */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">包含单品 ({selectedOutfit.items.length})</h4>
+                  {selectedOutfit.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                      <div className="w-10 h-10 rounded-md bg-card overflow-hidden flex-shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">{item.category} / {item.subCategory}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={() => {
+                      setSelectedOutfit(null);
+                      router.push('/ai-styling');
+                    }}
+                    className="flex-1 h-11 bg-primary hover:bg-primary-hover"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    基于此搭配
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>

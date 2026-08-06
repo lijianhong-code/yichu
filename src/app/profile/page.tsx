@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, Shirt, Sparkles, TrendingUp, Settings, Shield, HelpCircle, LogOut, Heart, Calendar, Palette, Ruler } from 'lucide-react';
+import { ChevronRight, Shirt, Sparkles, Settings, Shield, HelpCircle, LogOut, Heart, Calendar, Ruler, Moon, Bell, BellOff, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,37 @@ export default function ProfilePage() {
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
   const [isPreferenceSheetOpen, setIsPreferenceSheetOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false);
+  const [isPrivacySheetOpen, setIsPrivacySheetOpen] = useState(false);
+  const [isHelpSheetOpen, setIsHelpSheetOpen] = useState(false);
+  const [isBodySheetOpen, setIsBodySheetOpen] = useState(false);
+
+  // Toggleable preferences
+  const [selectedStyles, setSelectedStyles] = useState<string[]>(['休闲', '通勤']);
+  const [selectedColors, setSelectedColors] = useState<string[]>(['黑白灰', '大地色']);
+  const [selectedOccasions, setSelectedOccasions] = useState<string[]>(['办公室', '周末']);
+
+  // Settings state
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+
+  const toggleStyle = (style: string) => {
+    setSelectedStyles(prev =>
+      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
+    );
+  };
+
+  const toggleColor = (color: string) => {
+    setSelectedColors(prev =>
+      prev.includes(color) ? prev.filter(c => c !== color) : [...prev, color]
+    );
+  };
+
+  const toggleOccasion = (occasion: string) => {
+    setSelectedOccasions(prev =>
+      prev.includes(occasion) ? prev.filter(o => o !== occasion) : [...prev, occasion]
+    );
+  };
 
   const handleMenuClick = (action: string) => {
     switch (action) {
@@ -39,16 +70,16 @@ export default function ProfilePage() {
         setIsPreferenceSheetOpen(true);
         break;
       case 'body':
-        toast.info('身形尺码功能开发中');
+        setIsBodySheetOpen(true);
         break;
       case 'settings':
-        toast.info('设置功能开发中');
+        setIsSettingsSheetOpen(true);
         break;
       case 'privacy':
-        toast.info('隐私设置功能开发中');
+        setIsPrivacySheetOpen(true);
         break;
       case 'help':
-        toast.info('帮助中心功能开发中');
+        setIsHelpSheetOpen(true);
         break;
       case 'logout':
         setIsLogoutDialogOpen(true);
@@ -62,6 +93,14 @@ export default function ProfilePage() {
     }
     setIsLogoutDialogOpen(false);
     toast.success('已退出登录');
+  };
+
+  const handleClearData = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
+    setIsPrivacySheetOpen(false);
+    toast.success('已清除所有数据');
   };
 
   const menuItems = [
@@ -219,40 +258,69 @@ export default function ProfilePage() {
 
       {/* Preferences Sheet */}
       <Sheet open={isPreferenceSheetOpen} onOpenChange={setIsPreferenceSheetOpen}>
-        <SheetContent side="bottom" className="h-[60vh]">
+        <SheetContent side="bottom" className="h-[70vh]">
           <SheetHeader>
             <SheetTitle>风格偏好</SheetTitle>
           </SheetHeader>
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-5 overflow-y-auto">
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-2">偏好风格</h4>
+              <h4 className="text-sm font-medium text-foreground mb-3">偏好风格</h4>
               <div className="flex flex-wrap gap-2">
-                {['休闲', '通勤', '运动', '约会', '正式'].map((style) => (
-                  <Badge key={style} variant="secondary" className="text-sm">
+                {['休闲', '通勤', '运动', '约会', '正式', '街头', '文艺'].map((style) => (
+                  <button
+                    key={style}
+                    onClick={() => toggleStyle(style)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                      selectedStyles.includes(style)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
                     {style}
-                  </Badge>
+                  </button>
                 ))}
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-2">偏好颜色</h4>
+              <h4 className="text-sm font-medium text-foreground mb-3">偏好颜色</h4>
               <div className="flex flex-wrap gap-2">
-                {['黑白灰', '大地色', '蓝色系', '绿色系'].map((color) => (
-                  <Badge key={color} variant="secondary" className="text-sm">
+                {['黑白灰', '大地色', '蓝色系', '绿色系', '红色系', '粉色系', '紫色系'].map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => toggleColor(color)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                      selectedColors.includes(color)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
                     {color}
-                  </Badge>
+                  </button>
                 ))}
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-2">常穿场合</h4>
+              <h4 className="text-sm font-medium text-foreground mb-3">常穿场合</h4>
               <div className="flex flex-wrap gap-2">
-                {['办公室', '周末', '聚会', '运动'].map((occasion) => (
-                  <Badge key={occasion} variant="secondary" className="text-sm">
+                {['办公室', '周末', '聚会', '运动', '约会', '旅行'].map((occasion) => (
+                  <button
+                    key={occasion}
+                    onClick={() => toggleOccasion(occasion)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                      selectedOccasions.includes(occasion)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
                     {occasion}
-                  </Badge>
+                  </button>
                 ))}
               </div>
+            </div>
+            <div className="pt-2">
+              <Button className="w-full bg-primary hover:bg-primary-hover" onClick={() => { setIsPreferenceSheetOpen(false); toast.success('偏好已保存'); }}>
+                保存偏好
+              </Button>
             </div>
           </div>
         </SheetContent>
@@ -278,6 +346,148 @@ export default function ProfilePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Settings Sheet */}
+      <Sheet open={isSettingsSheetOpen} onOpenChange={setIsSettingsSheetOpen}>
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>设置</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3">
+                <Moon className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">深色模式</p>
+                  <p className="text-xs text-muted-foreground">跟随系统或手动切换</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`w-12 h-7 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <div className={`w-5 h-5 rounded-full bg-background shadow-sm transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3">
+                {notifications ? <Bell className="w-5 h-5 text-muted-foreground" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+                <div>
+                  <p className="text-sm font-medium text-foreground">推送通知</p>
+                  <p className="text-xs text-muted-foreground">穿搭提醒与 AI 建议</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setNotifications(!notifications)}
+                className={`w-12 h-7 rounded-full transition-colors ${notifications ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <div className={`w-5 h-5 rounded-full bg-background shadow-sm transition-transform ${notifications ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div className="pt-2">
+              <Button variant="outline" className="w-full" onClick={() => { setIsSettingsSheetOpen(false); toast.success('设置已保存'); }}>
+                保存设置
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Privacy Sheet */}
+      <Sheet open={isPrivacySheetOpen} onOpenChange={setIsPrivacySheetOpen}>
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>隐私与数据</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">本地存储数据</span>
+                <span className="text-sm font-medium text-foreground tabular-nums">
+                  {state.items.length} 件衣物 · {state.outfits.length} 套搭配
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">穿着记录</span>
+                <span className="text-sm font-medium text-foreground tabular-nums">{state.records.length} 条</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+              <p className="text-sm font-medium text-foreground mb-1">清除所有数据</p>
+              <p className="text-xs text-muted-foreground mb-3">删除所有衣物、搭配和记录，此操作不可撤销</p>
+              <Button variant="destructive" size="sm" onClick={handleClearData}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                清除数据
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Help Sheet */}
+      <Sheet open={isHelpSheetOpen} onOpenChange={setIsHelpSheetOpen}>
+        <SheetContent side="bottom" className="h-[60vh]">
+          <SheetHeader>
+            <SheetTitle>帮助与反馈</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-3 overflow-y-auto">
+            {[
+              { q: '如何添加衣物？', a: '在衣橱页面点击右下角的 + 按钮，可以拍摄单件或从相册批量导入。' },
+              { q: 'AI 搭配是怎么工作的？', a: '描述你的场合和需求，AI 会分析你的衣橱，推荐最合适的搭配方案。' },
+              { q: '如何编辑搭配？', a: '在搭配页面点击「编辑搭配」，可以拖拽调整位置、添加或移除单品。' },
+              { q: '数据存在哪里？', a: '所有数据存储在浏览器本地，不会上传到服务器。清除浏览器数据会丢失所有内容。' },
+            ].map((faq, i) => (
+              <div key={i} className="p-3 rounded-lg bg-muted/50">
+                <p className="text-sm font-medium text-foreground mb-1">{faq.q}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+            <div className="pt-2">
+              <Button variant="outline" className="w-full" onClick={() => { setIsHelpSheetOpen(false); toast.info('反馈功能即将上线'); }}>
+                提交反馈
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Body Sheet */}
+      <Sheet open={isBodySheetOpen} onOpenChange={setIsBodySheetOpen}>
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>身形尺码</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground mb-1">身高</p>
+                <p className="text-lg font-semibold text-foreground tabular-nums">{user.height || '--'} cm</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground mb-1">体重</p>
+                <p className="text-lg font-semibold text-foreground tabular-nums">{user.weight || '--'} kg</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground mb-1">上衣</p>
+                <p className="text-sm font-medium text-foreground">{user.topSize || '--'}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground mb-1">下装</p>
+                <p className="text-sm font-medium text-foreground">{user.bottomSize || '--'}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground mb-1">鞋码</p>
+                <p className="text-sm font-medium text-foreground">{user.shoeSize || '--'}</p>
+              </div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => { setIsBodySheetOpen(false); toast.info('身形编辑功能即将上线'); }}>
+              编辑身形数据
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

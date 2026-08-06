@@ -19,6 +19,11 @@ export interface UserProfile {
   city: string;
   avatar?: string;
   wardrobeDays: number;
+  height?: number;
+  weight?: number;
+  topSize?: string;
+  bottomSize?: string;
+  shoeSize?: string;
 }
 
 interface WardrobeState {

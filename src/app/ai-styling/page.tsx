@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Send,
   Sparkles,
@@ -29,6 +30,7 @@ import {
   Loader2,
   Star,
   XCircle,
+  Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -92,6 +94,7 @@ interface CandidateOutfit {
 }
 
 export default function AIStylingPage() {
+  const router = useRouter();
   const { addRecord, addOutfit, state } = useWardrobe();
   const [pageState, setPageState] = useState<PageState>('empty');
   const [inputValue, setInputValue] = useState('');
@@ -193,6 +196,7 @@ export default function AIStylingPage() {
         body: JSON.stringify({
           userInput: inputValue,
           weather: { temperature: 18, condition: '晴转多云', feelsLike: 16 },
+          referenceImage: referenceImage || undefined,
         }),
       });
 
@@ -540,6 +544,112 @@ export default function AIStylingPage() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Share outfit as image
+  const handleShareImage = async () => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const w = 750;
+      const h = 1000;
+      canvas.width = w;
+      canvas.height = h;
+
+      // Background
+      ctx.fillStyle = '#F7F8F6';
+      ctx.fillRect(0, 0, w, h);
+
+      // Title
+      ctx.fillStyle = '#181C1A';
+      ctx.font = 'bold 32px -apple-system, sans-serif';
+      ctx.fillText('我的穿搭', 40, 60);
+
+      // Outfit name
+      ctx.fillStyle = '#5D665F';
+      ctx.font = '20px -apple-system, sans-serif';
+      ctx.fillText(previewOutfit.name || 'AI 搭配方案', 40, 100);
+
+      // Draw item images
+      const items = previewOutfit.items;
+      const imgSize = 180;
+      const gap = 20;
+      const startX = 40;
+      const startY = 140;
+
+      for (let i = 0; i < Math.min(items.length, 6); i++) {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const x = startX + col * (imgSize + gap);
+        const y = startY + row * (imgSize + gap + 30);
+
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = items[i].imageUrl;
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              ctx.drawImage(img, x, y, imgSize, imgSize);
+              resolve();
+            };
+            img.onerror = () => resolve();
+          });
+        } catch {
+          ctx.fillStyle = '#ECEFEB';
+          ctx.fillRect(x, y, imgSize, imgSize);
+        }
+
+        ctx.fillStyle = '#181C1A';
+        ctx.font = '14px -apple-system, sans-serif';
+        ctx.fillText(items[i].name, x, y + imgSize + 18);
+      }
+
+      // Footer
+      ctx.fillStyle = '#858E87';
+      ctx.font = '14px -apple-system, sans-serif';
+      ctx.fillText('衣橱助手 · AI 智能搭配', 40, h - 40);
+
+      // Download
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `outfit-${previewOutfit.name || 'share'}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      setShowMoreMenu(false);
+      toast.success('已生成分享图片');
+    } catch {
+      toast.error('生成分享图片失败');
+    }
+  };
+
+  // Load historical record into canvas
+  const handleLoadHistory = (record: typeof state.records[0]) => {
+    const items: CanvasItem[] = record.outfit.items.map((wardrobeItem, index) => {
+      const totalItems = record.outfit.items.length;
+      const cols = Math.min(3, totalItems);
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      return {
+        id: `canvas-${wardrobeItem.id}`,
+        itemId: wardrobeItem.id,
+        item: wardrobeItem,
+        x: 20 + col * 30,
+        y: 15 + row * 35,
+        scale: 1,
+        locked: false,
+        zIndex: index,
+      };
+    });
+    setCanvasItems(items);
+    setEditHistory([{ items }]);
+    setEditHistoryIndex(0);
+    setSelectedItem(null);
+    setShowHistory(false);
+    setPageState('editing');
+    toast.success('已加载历史搭配', record.date);
   };
 
   // Calculate outfit rating
@@ -1177,7 +1287,11 @@ export default function AIStylingPage() {
               <div className="space-y-3 py-4">
                 {state.records.length > 0 ? (
                   state.records.slice(0, 20).map((record) => (
-                    <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <button
+                      key={record.id}
+                      onClick={() => handleLoadHistory(record)}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 w-full text-left hover:bg-muted transition-colors"
+                    >
                       <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
                         {record.outfit.items[0] && (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -1186,9 +1300,10 @@ export default function AIStylingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{record.date}</p>
-                        <p className="text-xs text-muted-foreground">{record.outfit.items.length} 件单品</p>
+                        <p className="text-xs text-muted-foreground">{record.outfit.items.length} 件单品 · {record.outfit.name || '搭配方案'}</p>
                       </div>
-                    </div>
+                      <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180 flex-shrink-0" />
+                    </button>
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
@@ -1212,8 +1327,8 @@ export default function AIStylingPage() {
                 <Check className="h-4 w-4 mr-3" />
                 保存搭配
               </Button>
-              <Button variant="ghost" className="w-full justify-start h-11">
-                <Send className="h-4 w-4 mr-3" />
+              <Button variant="ghost" className="w-full justify-start h-11" onClick={handleShareImage}>
+                <Share2 className="h-4 w-4 mr-3" />
                 分享图片
               </Button>
             </div>
