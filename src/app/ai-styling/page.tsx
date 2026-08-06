@@ -274,13 +274,8 @@ export default function AIStylingPage() {
     setTrayOpen(false);
   };
 
-  // Enter manual editing
-  const handleManualEdit = () => {
-    setCanvasItems([]);
-    setEditHistory([{ items: [] }]);
-    setEditHistoryIndex(0);
-    setSelectedItem(null);
-    setPageState('editing');
+  // Open wardrobe tray for manual selection
+  const handleOpenTray = () => {
     setTrayOpen(true);
   };
 
@@ -664,21 +659,21 @@ export default function AIStylingPage() {
 
   return (
     <TooltipProvider>
-      <div className={`min-h-screen bg-background ${pageState === 'editing' ? 'pb-4' : 'pb-24'}`}>
+      <div className={`min-h-screen bg-background pb-24`}>
         {/* ==================== CONTEXT BAR (always visible) ==================== */}
         <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {(pageState === 'preview' || pageState === 'editing') && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPageState('empty')}>
+              {(pageState === 'preview' || canvasItems.length > 0) && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               )}
               <div>
                 <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  {pageState === 'editing' ? '编辑搭配' : '搭配'}
+                  搭配
                 </h1>
-                {pageState !== 'empty' && (
+                {(pageState !== 'empty' || canvasItems.length > 0) && (
                   <p className="text-[10px] text-muted-foreground">
                     上海 · 22-28°C · {pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}
                   </p>
@@ -686,7 +681,8 @@ export default function AIStylingPage() {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {pageState === 'editing' ? (
+              {/* Undo/Redo when there are canvas items */}
+              {canvasItems.length > 0 && (
                 <>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -705,16 +701,14 @@ export default function AIStylingPage() {
                     <TooltipContent>重做</TooltipContent>
                   </Tooltip>
                 </>
-              ) : (
-                <>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory(true)}>
-                    <History className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMoreMenu(true)}>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </>
               )}
+              {/* History and more menu */}
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory(true)}>
+                <History className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMoreMenu(true)}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </header>
@@ -723,7 +717,7 @@ export default function AIStylingPage() {
         <div className="px-4 pt-4">
           <div className={`rounded-xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '48vh', maxHeight: '56vh' }}>
             {/* Empty state illustration */}
-            {pageState === 'empty' && !candidates.length && (
+            {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
                 <img src="/empty-styling.jpeg" alt="" className="w-32 h-32 object-contain opacity-60 mb-4" />
                 <p className="text-sm text-muted-foreground text-center">描述你的需求，AI 将为你智能搭配</p>
@@ -739,7 +733,7 @@ export default function AIStylingPage() {
                 const col = idx % cols;
                 return { id: `${item.id}-${idx}`, itemId: item.id, item, x: 15 + col * 28, y: 10 + row * 35, scale: 1, locked: false, zIndex: idx };
               }) : []}
-              editable={pageState === 'editing'}
+              editable={pageState === 'editing' || canvasItems.length > 0}
               onSave={(items) => {
                 setCanvasItems(items);
                 pushEditHistory(items);
@@ -799,8 +793,8 @@ export default function AIStylingPage() {
 
         {/* ==================== CONTEXTUAL BOTTOM ACTION AREA ==================== */}
         
-        {/* EMPTY STATE Actions */}
-        {pageState === 'empty' && (
+        {/* EMPTY STATE Actions - always show AI input */}
+        {(pageState === 'empty' || canvasItems.length > 0) && (
           <div className="px-4 pt-5 space-y-3">
             {/* AI error message */}
             {aiError && (
@@ -886,7 +880,7 @@ export default function AIStylingPage() {
               <Button
                 variant="outline"
                 className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-                onClick={handleManualEdit}
+                onClick={handleOpenTray}
               >
                 <Pencil className="h-4 w-4 mr-2" />
                 手动搭一套
@@ -983,8 +977,8 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* EDITING STATE ACTIONS */}
-        {pageState === 'editing' && (
+        {/* EDITING STATE ACTIONS - show when editing or when there are canvas items */}
+        {(pageState === 'editing' || canvasItems.length > 0) && (
           <div className="px-4 pt-3 space-y-3">
             {/* Selected item toolbar */}
             {selectedItem && (
