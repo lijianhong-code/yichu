@@ -10,7 +10,6 @@ import {
   Sparkles,
   Edit3,
   Trash2,
-  MoreVertical,
   Camera,
   Image as ImageIcon,
   Heart,
@@ -49,7 +48,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
-import { type ClothingItem, type ClothingStatus, CATEGORIES, type Outfit } from '@/lib/mock-data';
+import { type ClothingItem, CATEGORIES, type Outfit } from '@/lib/mock-data';
 import { OutfitCanvas } from '@/components/outfit-canvas';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -71,7 +70,6 @@ export default function WardrobePage() {
   const [viewMode, setViewMode] = useState<'items' | 'outfits'>('items');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
-  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<ClothingItem | null>(null);
   const [editItem, setEditItem] = useState<ClothingItem | null>(null);
   const [uploadedItems, setUploadedItems] = useState<ClothingItem[]>([]);
@@ -182,16 +180,7 @@ export default function WardrobePage() {
     deleteItem(deleteConfirmItem.id);
     setDeleteConfirmItem(null);
     setSelectedItem(null);
-    setIsMoreSheetOpen(false);
     toast.success('已删除衣物');
-  };
-
-  const handleBatchStatus = (status: ClothingStatus) => {
-    if (!selectedItem) return;
-    updateItem(selectedItem.id, { status });
-    setSelectedItem({ ...selectedItem, status });
-    setIsMoreSheetOpen(false);
-    toast.success(`已标记为${STATUS_CONFIG[status].label}`);
   };
 
   const stats = getStats();
@@ -489,8 +478,8 @@ export default function WardrobePage() {
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="px-4 mt-4 flex items-center gap-2">
+              {/* Actions - 底部三按钮 */}
+              <div className="px-4 mt-4 pb-6 flex items-center gap-3">
                 <Button
                   onClick={() => {
                     setSelectedItem(null);
@@ -499,60 +488,23 @@ export default function WardrobePage() {
                   className="flex-1 h-11 bg-primary hover:bg-primary-hover"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  用它搭配
+                  用它穿搭
                 </Button>
-                <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-11 w-11">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-auto rounded-t-2xl">
-                    <SheetHeader>
-                      <SheetTitle>更多操作</SheetTitle>
-                    </SheetHeader>
-                    <div className="py-4 space-y-2">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start h-12"
-                        onClick={() => {
-                          setEditItem({ ...selectedItem });
-                          setIsMoreSheetOpen(false);
-                        }}
-                      >
-                        <Edit3 className="w-4 h-4 mr-3" />
-                        编辑信息
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start h-12"
-                        onClick={() => handleBatchStatus('washing')}
-                      >
-                        <Hand className="w-4 h-4 mr-3" />
-                        标记为洗衣中
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start h-12"
-                        onClick={() => handleBatchStatus('lent')}
-                      >
-                        <Clock className="w-4 h-4 mr-3" />
-                        标记为已借出
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start h-12 text-destructive"
-                        onClick={() => {
-                          setDeleteConfirmItem(selectedItem);
-                          setIsMoreSheetOpen(false);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 mr-3" />
-                        删除单品
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-11 border-border text-foreground"
+                  onClick={() => setEditItem({ ...selectedItem })}
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  编辑
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 w-11 p-0 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  onClick={() => setDeleteConfirmItem(selectedItem)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           )}
