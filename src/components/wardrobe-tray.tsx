@@ -101,71 +101,92 @@ export function WardrobeTray({
         "animate-in slide-in-from-bottom duration-200",
         className
       )}
-      style={{ maxHeight: "40vh" }}
+      style={{ height: "40%", minHeight: "200px", maxHeight: "300px" }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-100">
-        <span className="text-sm font-medium text-neutral-900">
-          从衣橱添加
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-neutral-100 shrink-0">
+        <span className="text-xs font-medium text-neutral-700">
+          衣橱 ({filteredItems.length})
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {selectedItems.length > 0 && (
             <Button
               size="sm"
               onClick={() => onConfirmAdd?.(selectedItems)}
-              className="h-7 px-3 text-xs"
+              className="h-6 px-2 text-xs"
             >
-              添加所选 ({selectedItems.length})
+              添加 ({selectedItems.length})
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggle}
-            className="w-7 h-7"
+            className="w-6 h-6"
           >
-            <X className="w-4 h-4 text-neutral-500" />
+            <X className="w-3.5 h-3.5 text-neutral-500" />
           </Button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-4 py-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <Input
-            placeholder="搜索衣物..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 bg-neutral-50 border-neutral-200 text-sm"
-          />
-        </div>
+      {/* Category Filter with Search - Combined Row */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-neutral-100 shrink-0">
+        {/* Compact Search Button */}
+        <Button
+          variant={searchQuery ? "secondary" : "ghost"}
+          size="icon"
+          onClick={() => setSearchQuery(searchQuery ? "" : " ")}
+          className="w-7 h-7 shrink-0"
+        >
+          <Search className="w-3.5 h-3.5" />
+        </Button>
+        
+        {/* Search Input - Shows when active */}
+        {searchQuery && (
+          <div className="relative flex-1">
+            <Input
+              autoFocus
+              placeholder="搜索..."
+              value={searchQuery === " " ? "" : searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-7 text-xs pl-2 pr-7"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-0 top-0 w-7 h-7"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        
+        {/* Category Tabs */}
+        <ScrollArea className="flex-1 whitespace-nowrap">
+          <div className="flex gap-1">
+            {CATEGORIES.map((cat) => (
+              <Button
+                key={cat}
+                variant={activeCategory === cat ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveCategory(cat)}
+                className={cn(
+                  "h-6 px-2 rounded-full text-xs whitespace-nowrap",
+                  activeCategory === cat && "bg-brand-100 text-brand-700 hover:bg-brand-100/80"
+                )}
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" className="h-0" />
+        </ScrollArea>
       </div>
 
-      {/* Category Filter */}
-      <ScrollArea className="w-full whitespace-nowrap border-b border-neutral-100">
-        <div className="flex gap-1.5 px-4 py-2">
-          {CATEGORIES.map((cat) => (
-            <Button
-              key={cat}
-              variant={activeCategory === cat ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "h-7 px-3 rounded-full text-xs whitespace-nowrap",
-                activeCategory === cat && "bg-brand-100 text-brand-700 hover:bg-brand-100/80"
-              )}
-            >
-              {cat}
-            </Button>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" className="h-0" />
-      </ScrollArea>
-
-      {/* Items Grid */}
-      <ScrollArea className="flex-1">
-        <div className="grid grid-cols-4 gap-2 p-4">
+      {/* Items Grid - Scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="grid grid-cols-4 gap-1.5 p-2">
           {filteredItems.map((item) => {
             const selected = isSelected(item)
             const existing = isExisting(item.id)
@@ -196,29 +217,41 @@ export function WardrobeTray({
                 <img
                   src={item.imageUrl}
                   alt={item.name}
-                  className="w-full h-full object-contain p-1.5"
+                  className="w-full h-full object-contain p-1"
                   draggable={false}
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                    const parent = target.parentElement
+                    if (parent && !parent.querySelector('.placeholder-icon')) {
+                      const placeholder = document.createElement('div')
+                      placeholder.className = 'placeholder-icon absolute inset-0 flex items-center justify-center text-neutral-400'
+                      placeholder.innerHTML = `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>`
+                      parent.appendChild(placeholder)
+                    }
+                  }}
                 />
 
                 {/* Selected Check */}
                 {selected && (
-                  <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
+                  <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-brand-600 flex items-center justify-center">
+                    <Check className="w-2.5 h-2.5 text-white" />
                   </div>
                 )}
 
                 {/* Already in outfit indicator */}
                 {existing && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] text-neutral-500 bg-white/80 px-1.5 py-0.5 rounded">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <span className="text-[9px] text-white bg-black/50 px-1 py-0.5 rounded">
                       已添加
                     </span>
                   </div>
                 )}
 
                 {/* Name tooltip on hover */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent p-1.5 opacity-0 hover:opacity-100 transition-opacity">
-                  <span className="text-[10px] text-white truncate block">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-1 opacity-0 hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] text-white truncate block">
                     {item.name}
                   </span>
                 </div>
@@ -228,11 +261,11 @@ export function WardrobeTray({
         </div>
 
         {filteredItems.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-neutral-500">
-            <p className="text-sm">没有找到匹配的衣物</p>
+          <div className="flex flex-col items-center justify-center py-6 text-neutral-500">
+            <p className="text-xs">没有找到匹配的衣物</p>
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   )
 }
