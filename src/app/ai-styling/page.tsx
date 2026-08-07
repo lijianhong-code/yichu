@@ -774,21 +774,19 @@ export default function AIStylingPage() {
                 </div>
               </div>
             )}
-            {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
-            {(pageState === 'editing' || trayOpen) && (
-              <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
-                <WardrobeTray
-                  expanded={true}
-                  onToggle={() => setTrayOpen(!trayOpen)}
-                  existingItemIds={canvasItems.map(item => item.item.id)}
-                  onItemSelect={handleAddFromTray}
-                />
-              </div>
-            )}
           </div>
+          {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
+          {(pageState === 'editing' || trayOpen) && (
+            <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
+              <WardrobeTray
+                expanded={true}
+                onToggle={() => setTrayOpen(!trayOpen)}
+                existingItemIds={canvasItems.map(item => item.item.id)}
+                onItemSelect={handleAddFromTray}
+              />
+            </div>
+          )}
         </div>
-
-        {/* ==================== CONTEXTUAL BOTTOM ACTION AREA ==================== */}
         
         {/* EMPTY STATE Actions - only show AI input when truly empty (no canvas items) */}
         {pageState === 'empty' && canvasItems.length === 0 && (
