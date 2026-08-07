@@ -660,11 +660,11 @@ export default function AIStylingPage() {
 
   return (
     <TooltipProvider>
-      <div className={`min-h-screen bg-background pb-24`}>
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* ==================== SIMPLIFIED HEADER ==================== */}
-        <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
-          <div className="px-4 pt-[env(safe-area-inset-top)] pb-3">
-            <div className="flex items-center justify-between h-14">
+        <header className="shrink-0 glass-surface border-b border-border/30">
+          <div className="px-4 pt-[env(safe-area-inset-top)] pb-2">
+            <div className="flex items-center justify-between h-12">
               <div className="flex items-center gap-3">
                 {(pageState === 'preview' || canvasItems.length > 0) && (
                   <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
@@ -688,11 +688,11 @@ export default function AIStylingPage() {
         </header>
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
-        <div className="px-4 pt-4">
+        <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
           {/* Scene info tag */}
           {(pageState !== 'empty' || canvasItems.length > 0) && (
-            <div className="flex items-center justify-center mb-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-xs text-muted-foreground">
+            <div className="flex items-center justify-center mb-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted/60 text-xs text-muted-foreground">
                 <span>上海 · 22-28°C</span>
                 <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                 <span>{pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}</span>
@@ -700,7 +700,7 @@ export default function AIStylingPage() {
             </div>
           )}
           
-          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '50vh', maxHeight: '60vh' }}>
+          <div className={`flex-1 min-h-0 rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`}>
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
@@ -780,7 +780,7 @@ export default function AIStylingPage() {
         
         {/* EMPTY STATE Actions - always show AI input */}
         {(pageState === 'empty' || canvasItems.length > 0) && (
-          <div className="px-4 pt-5 space-y-3">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             {/* AI error message */}
             {aiError && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
@@ -793,29 +793,29 @@ export default function AIStylingPage() {
             )}
             
             {/* AI input area - OpenAI style */}
-            <div className="relative rounded-2xl bg-muted/20 border border-border/30 overflow-hidden">
+            <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                className="min-h-[80px] max-h-[160px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
+                className="min-h-[60px] max-h-[120px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
                 style={{ height: 'auto' }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
                   target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 160) + 'px';
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
                 }}
               />
               {/* Action bar below input */}
-              <div className="flex items-center justify-between px-3 pb-3 pt-1">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center justify-between px-2 pb-2 pt-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`h-9 px-3 rounded-full text-xs gap-1.5 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                    className={`h-8 px-2.5 rounded-full text-xs gap-1 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
                     onClick={handleReferenceImageClick}
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <ImageIcon className="h-3.5 w-3.5" />
                     {referenceImage ? '已添加' : '参考图'}
                   </Button>
                   <input
@@ -825,15 +825,15 @@ export default function AIStylingPage() {
                     className="hidden"
                     onChange={handleFileChange}
                   />
-                  <div className="h-4 w-px bg-border/40" />
-                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                  <div className="h-3.5 w-px bg-border/40" />
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
                     {(quickScenarios || []).map((scenario) => (
                       <Button
                         key={scenario.label}
                         variant="ghost"
                         size="sm"
                         onClick={() => setInputValue(scenario.label)}
-                        className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1.5 shrink-0"
+                        className="h-8 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1 shrink-0"
                       >
                         {iconMap[scenario.icon] || null}
                         {scenario.label}
@@ -843,7 +843,7 @@ export default function AIStylingPage() {
                 </div>
                 <Button
                   size="icon"
-                  className="h-10 w-10 rounded-xl bg-primary hover:bg-primary/90 shadow-sm shrink-0"
+                  className="h-9 w-9 rounded-lg bg-primary hover:bg-primary/90 shadow-sm shrink-0"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
@@ -855,10 +855,10 @@ export default function AIStylingPage() {
             {/* Manual styling entry */}
             <Button
               variant="outline"
-              className="w-full h-11 rounded-xl text-sm border-border/60 hover:bg-muted/40"
+              className="w-full h-10 rounded-lg text-sm border-border/60 hover:bg-muted/40"
               onClick={handleOpenTray}
             >
-              <Pencil className="h-4 w-4 mr-2" />
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
               手动搭配
             </Button>
           </div>
@@ -866,7 +866,7 @@ export default function AIStylingPage() {
 
         {/* PREVIEW STATE ACTIONS - Card-based display */}
         {pageState === 'preview' && (
-          <div className="px-4 pt-4 space-y-4">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             {/* Candidate cards - horizontal scroll */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {(candidates || []).map((candidate, index) => (
@@ -960,7 +960,7 @@ export default function AIStylingPage() {
 
         {/* EDITING STATE ACTIONS - show when editing, when there are canvas items, or when tray is open */}
         {(pageState === 'editing' || canvasItems.length > 0 || trayOpen) && (
-          <div className="px-4 pt-3 space-y-3">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             {/* Selected item toolbar */}
             {selectedItem && (
               <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
