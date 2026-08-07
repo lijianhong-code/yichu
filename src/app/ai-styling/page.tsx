@@ -1001,8 +1001,8 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* EDITING STATE ACTIONS - only show when explicitly in editing state */}
-        {pageState === 'editing' && (
+        {/* EDITING STATE ACTIONS - show when in editing state OR tray is open */}
+        {(pageState === 'editing' || trayOpen) && (
           <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             {/* Selected item toolbar */}
             {selectedItem && (
