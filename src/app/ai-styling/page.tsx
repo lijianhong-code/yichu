@@ -701,7 +701,7 @@ export default function AIStylingPage() {
             </div>
           )}
           
-          <div className={`flex-1 min-h-0 rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`}>
+          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: (pageState === 'editing' || trayOpen) ? '55%' : '100%', minHeight: '200px' }}>
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
@@ -772,6 +772,17 @@ export default function AIStylingPage() {
                     取消生成
                   </Button>
                 </div>
+              </div>
+            )}
+            {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
+            {(pageState === 'editing' || trayOpen) && (
+              <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
+                <WardrobeTray
+                  expanded={true}
+                  onToggle={() => setTrayOpen(!trayOpen)}
+                  existingItemIds={canvasItems.map(item => item.item.id)}
+                  onItemSelect={handleAddFromTray}
+                />
               </div>
             )}
           </div>
@@ -1150,17 +1161,6 @@ export default function AIStylingPage() {
                 </div>
               </div>
             )}
-
-            {/* Wardrobe Tray */}
-            <WardrobeTray
-              expanded={trayOpen}
-              onToggle={() => setTrayOpen(!trayOpen)}
-              existingItemIds={canvasItems.map((ci) => ci.item.id)}
-              selectedItems={[]}
-              onItemSelect={(item) => handleAddFromTray(item)}
-              onItemDeselect={() => {}}
-              onConfirmAdd={() => setTrayOpen(false)}
-            />
           </div>
         )}
 
