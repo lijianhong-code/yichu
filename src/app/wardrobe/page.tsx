@@ -8,7 +8,6 @@ import {
   X,
   Shirt,
   Sparkles,
-  Edit3,
   Trash2,
   Camera,
   Image as ImageIcon,
@@ -71,7 +70,6 @@ export default function WardrobePage() {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<ClothingItem | null>(null);
-  const [editItem, setEditItem] = useState<ClothingItem | null>(null);
   const [uploadedItems, setUploadedItems] = useState<ClothingItem[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [fabOffset, setFabOffset] = useState(0);
@@ -80,6 +78,8 @@ export default function WardrobePage() {
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollHint, setShowScrollHint] = useState(true);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+  const [inlineEditField, setInlineEditField] = useState<string | null>(null);
+  const [inlineEditValue, setInlineEditValue] = useState<string>('');
 
   // Item counts per category
   const itemCounts = useMemo(() => {
@@ -165,14 +165,6 @@ export default function WardrobePage() {
     setUploadedItems([]);
     setIsUploadSheetOpen(false);
     toast.success(`已添加 ${uploadedItems.length} 件衣物`);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editItem) return;
-    updateItem(editItem.id, editItem);
-    setEditItem(null);
-    setSelectedItem(null);
-    toast.success('已保存修改');
   };
 
   const handleDelete = () => {
@@ -434,36 +426,171 @@ export default function WardrobePage() {
                   <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
                 )}
 
-                {/* Attribute Tags - 横向并列展示 */}
+                {/* Attribute Tags - 横向并列展示，双击编辑 */}
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedItem.primaryColor }} />
-                    {selectedItem.primaryColor}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                    <Shirt className="w-3 h-3 text-muted-foreground" />
-                    {selectedItem.category}/{selectedItem.subCategory}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    穿{selectedItem.wearCount}次
-                  </span>
-                  {selectedItem.season.map((s) => (
-                    <span key={s} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                      <Heart className="w-3 h-3 text-muted-foreground" />
-                      {s}
+                  {/* 颜色 */}
+                  {inlineEditField === 'color' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
+                      <span className="text-muted-foreground">颜色：</span>
+                      <input
+                        type="text"
+                        value={inlineEditValue}
+                        onChange={(e) => setInlineEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateItem(selectedItem.id, { primaryColor: inlineEditValue });
+                            setSelectedItem({ ...selectedItem, primaryColor: inlineEditValue });
+                            setInlineEditField(null);
+                          } else if (e.key === 'Escape') {
+                            setInlineEditField(null);
+                          }
+                        }}
+                        className="w-16 bg-transparent border-none outline-none text-foreground text-xs"
+                        autoFocus
+                      />
                     </span>
-                  ))}
-                  {selectedItem.material && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                      <Hand className="w-3 h-3 text-muted-foreground" />
-                      {selectedItem.material}
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
+                      onDoubleClick={() => {
+                        setInlineEditField('color');
+                        setInlineEditValue(selectedItem.primaryColor);
+                      }}
+                      title="双击编辑颜色"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedItem.primaryColor }} />
+                      <span className="text-muted-foreground">颜色：</span>
+                      {selectedItem.primaryColor}
                     </span>
                   )}
+
+                  {/* 分类 */}
+                  {inlineEditField === 'category' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
+                      <span className="text-muted-foreground">分类：</span>
+                      <select
+                        value={inlineEditValue}
+                        onChange={(e) => setInlineEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const [cat, sub] = inlineEditValue.split('/');
+                            updateItem(selectedItem.id, { category: cat, subCategory: sub || '' });
+                            setSelectedItem({ ...selectedItem, category: cat, subCategory: sub || '' });
+                            setInlineEditField(null);
+                          } else if (e.key === 'Escape') {
+                            setInlineEditField(null);
+                          }
+                        }}
+                        className="bg-transparent border-none outline-none text-foreground text-xs"
+                        autoFocus
+                      >
+                        {CATEGORIES.filter(c => c.key !== 'all').map(c => (
+                          <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                      </select>
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
+                      onDoubleClick={() => {
+                        setInlineEditField('category');
+                        setInlineEditValue(selectedItem.category);
+                      }}
+                      title="双击编辑分类"
+                    >
+                      <Shirt className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">分类：</span>
+                      {selectedItem.category}/{selectedItem.subCategory}
+                    </span>
+                  )}
+
+                  {/* 季节 */}
+                  {inlineEditField === 'season' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
+                      <span className="text-muted-foreground">季节：</span>
+                      <input
+                        type="text"
+                        value={inlineEditValue}
+                        onChange={(e) => setInlineEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const seasons = inlineEditValue.split(/[,，/]/).map(s => s.trim()).filter(Boolean);
+                            updateItem(selectedItem.id, { season: seasons });
+                            setSelectedItem({ ...selectedItem, season: seasons });
+                            setInlineEditField(null);
+                          } else if (e.key === 'Escape') {
+                            setInlineEditField(null);
+                          }
+                        }}
+                        className="w-20 bg-transparent border-none outline-none text-foreground text-xs"
+                        placeholder="春,秋"
+                        autoFocus
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
+                      onDoubleClick={() => {
+                        setInlineEditField('season');
+                        setInlineEditValue(selectedItem.season.join(','));
+                      }}
+                      title="双击编辑季节"
+                    >
+                      <Heart className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">季节：</span>
+                      {selectedItem.season.join('/')}
+                    </span>
+                  )}
+
+                  {/* 材质 */}
+                  {inlineEditField === 'material' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
+                      <span className="text-muted-foreground">材质：</span>
+                      <input
+                        type="text"
+                        value={inlineEditValue}
+                        onChange={(e) => setInlineEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateItem(selectedItem.id, { material: inlineEditValue });
+                            setSelectedItem({ ...selectedItem, material: inlineEditValue });
+                            setInlineEditField(null);
+                          } else if (e.key === 'Escape') {
+                            setInlineEditField(null);
+                          }
+                        }}
+                        className="w-16 bg-transparent border-none outline-none text-foreground text-xs"
+                        autoFocus
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
+                      onDoubleClick={() => {
+                        setInlineEditField('material');
+                        setInlineEditValue(selectedItem.material || '');
+                      }}
+                      title="双击编辑材质"
+                    >
+                      <Hand className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">材质：</span>
+                      {selectedItem.material || '未设置'}
+                    </span>
+                  )}
+
+                  {/* 穿着次数 - 只读 */}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">穿着：</span>
+                    {selectedItem.wearCount}次
+                  </span>
                 </div>
+
+                {/* 提示 */}
+                <p className="text-[11px] text-muted-foreground/60 mt-2">双击标签可快速编辑属性</p>
               </div>
 
-              {/* Actions - 底部三按钮 */}
+              {/* Actions - 底部两按钮 */}
               <div className="px-4 mt-4 pb-6 flex items-center gap-3">
                 <Button
                   onClick={() => {
@@ -477,14 +604,6 @@ export default function WardrobePage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-11 border-border text-foreground"
-                  onClick={() => setEditItem({ ...selectedItem })}
-                >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  编辑
-                </Button>
-                <Button
-                  variant="outline"
                   className="h-11 w-11 p-0 border-destructive/30 text-destructive hover:bg-destructive/10"
                   onClick={() => setDeleteConfirmItem(selectedItem)}
                 >
@@ -495,63 +614,6 @@ export default function WardrobePage() {
           )}
         </SheetContent>
       </Sheet>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>
-        <DialogContent className="sm:max-w-[425px] rounded-xl">
-          <DialogHeader>
-            <DialogTitle>编辑衣物</DialogTitle>
-            <DialogDescription>修改衣物信息</DialogDescription>
-          </DialogHeader>
-          {editItem && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">名称</label>
-                <Input
-                  value={editItem.name}
-                  onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">描述</label>
-                <Input
-                  value={editItem.description || ''}
-                  onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground">子分类</label>
-                  <Input
-                    value={editItem.subCategory}
-                    onChange={(e) => setEditItem({ ...editItem, subCategory: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">材质</label>
-                  <Input
-                    value={editItem.material}
-                    onChange={(e) => setEditItem({ ...editItem, material: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleSaveEdit} className="flex-1 bg-primary hover:bg-primary-hover">
-                  <Check className="w-4 h-4 mr-2" />
-                  保存
-                </Button>
-                <Button variant="outline" onClick={() => setEditItem(null)}>
-                  取消
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
