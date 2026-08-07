@@ -248,17 +248,6 @@ export default function WardrobePage() {
                 ref={categoryScrollRef}
                 className="flex items-center gap-2 overflow-x-auto no-scrollbar"
               >
-                <button
-                  onClick={() => setActiveCategory('all')}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                    activeCategory === 'all'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  全部
-                  <span className="text-xs opacity-70">{itemCounts.all}</span>
-                </button>
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.key}
