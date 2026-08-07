@@ -217,9 +217,6 @@ export default function WardrobePage() {
               </button>
             </div>
             <div className="flex-1" />
-            <Badge variant="secondary" className="text-xs">
-              {stats.totalItems} 件
-            </Badge>
             <button
               onClick={() => setShowSearch(!showSearch)}
               className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
@@ -437,33 +434,32 @@ export default function WardrobePage() {
                   <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
                 )}
 
-                {/* Attribute List */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedItem.primaryColor }} />
-                    <span className="text-sm text-muted-foreground">颜色</span>
-                    <span className="text-sm text-foreground ml-auto">{selectedItem.primaryColor}</span>
-                  </div>
-                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
-                    <Shirt className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">分类</span>
-                    <span className="text-sm text-foreground ml-auto">{selectedItem.category} / {selectedItem.subCategory}</span>
-                  </div>
-                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">穿着次数</span>
-                    <span className="text-sm text-foreground ml-auto">{selectedItem.wearCount} 次</span>
-                  </div>
-                  <div className="flex items-center gap-3 py-2 border-b border-border/50">
-                    <Heart className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">季节</span>
-                    <span className="text-sm text-foreground ml-auto">{selectedItem.season.join(', ')}</span>
-                  </div>
-                  <div className="flex items-center gap-3 py-2">
-                    <Hand className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">材质</span>
-                    <span className="text-sm text-foreground ml-auto">{selectedItem.material}</span>
-                  </div>
+                {/* Attribute Tags - 横向并列展示 */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedItem.primaryColor }} />
+                    {selectedItem.primaryColor}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                    <Shirt className="w-3 h-3 text-muted-foreground" />
+                    {selectedItem.category}/{selectedItem.subCategory}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    穿{selectedItem.wearCount}次
+                  </span>
+                  {selectedItem.season.map((s) => (
+                    <span key={s} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                      <Heart className="w-3 h-3 text-muted-foreground" />
+                      {s}
+                    </span>
+                  ))}
+                  {selectedItem.material && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
+                      <Hand className="w-3 h-3 text-muted-foreground" />
+                      {selectedItem.material}
+                    </span>
+                  )}
                 </div>
               </div>
 
