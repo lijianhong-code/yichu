@@ -977,8 +977,8 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* EDITING STATE ACTIONS - show when editing or when there are canvas items */}
-        {(pageState === 'editing' || canvasItems.length > 0) && (
+        {/* EDITING STATE ACTIONS - show when editing, when there are canvas items, or when tray is open */}
+        {(pageState === 'editing' || canvasItems.length > 0 || trayOpen) && (
           <div className="px-4 pt-3 space-y-3">
             {/* Selected item toolbar */}
             {selectedItem && (
