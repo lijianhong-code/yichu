@@ -405,17 +405,17 @@ export default function WardrobePage() {
           </SheetHeader>
           {selectedItem && (
             <div className="overflow-y-auto h-full pb-4">
-              {/* Large Image - 4:5 ratio */}
-              <div className="aspect-[4/5] rounded-lg overflow-hidden bg-muted mx-4">
+              {/* Image - 16:9 ratio, smaller */}
+              <div className="aspect-[16/9] rounded-lg overflow-hidden bg-muted mx-4 max-h-48">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedItem.imageUrl}
                   alt={selectedItem.name}
-                  className="w-full h-full object-contain p-4"
+                  className="w-full h-full object-contain p-2"
                 />
               </div>
 
-              {/* Info - List style with icons */}
+              {/* Info */}
               <div className="px-4 mt-4 space-y-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{selectedItem.name}</h3>
@@ -426,35 +426,40 @@ export default function WardrobePage() {
                   <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
                 )}
 
-                {/* Attribute Tags - 横向并列展示，双击编辑 */}
-                <div className="flex flex-wrap gap-2">
+                {/* Attribute Tags - 两列网格布局，双击编辑 */}
+                <div className="grid grid-cols-2 gap-2">
                   {/* 颜色 */}
                   {inlineEditField === 'color' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
-                      <span className="text-muted-foreground">颜色：</span>
-                      <input
-                        type="text"
-                        value={inlineEditValue}
-                        onChange={(e) => setInlineEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            updateItem(selectedItem.id, { primaryColor: inlineEditValue });
-                            setSelectedItem({ ...selectedItem, primaryColor: inlineEditValue });
-                            setInlineEditField(null);
-                          } else if (e.key === 'Escape') {
-                            setInlineEditField(null);
-                          }
-                        }}
-                        className="w-16 bg-transparent border-none outline-none text-foreground text-xs"
-                        autoFocus
-                      />
-                    </span>
+                    <div className="col-span-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                      <span className="text-xs text-muted-foreground mb-1.5 block">选择颜色：</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['#FFFFFF', '#000000', '#808080', '#C0C0C0', '#8B4513', '#A0522D', '#D2691E', '#F5DEB3', '#FF0000', '#DC143C', '#FF6347', '#FFA07A', '#FF8C00', '#FFD700', '#FFFF00', '#F0E68C', '#32CD32', '#228B22', '#006400', '#98FB98', '#0000FF', '#4169E1', '#1E90FF', '#87CEEB', '#800080', '#9370DB', '#BA55D3', '#DDA0DD', '#FF69B4', '#FF1493', '#FFB6C1'].map(color => (
+                          <button
+                            key={color}
+                            onClick={() => {
+                              updateItem(selectedItem.id, { primaryColor: color });
+                              setSelectedItem({ ...selectedItem, primaryColor: color });
+                              setInlineEditField(null);
+                            }}
+                            className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                              selectedItem.primaryColor === color ? 'border-primary scale-110' : 'border-muted'
+                            }`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setInlineEditField(null)}
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        取消
+                      </button>
+                    </div>
                   ) : (
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
                       onDoubleClick={() => {
                         setInlineEditField('color');
-                        setInlineEditValue(selectedItem.primaryColor);
                       }}
                       title="双击编辑颜色"
                     >
@@ -466,73 +471,85 @@ export default function WardrobePage() {
 
                   {/* 分类 */}
                   {inlineEditField === 'category' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
-                      <span className="text-muted-foreground">分类：</span>
-                      <select
-                        value={inlineEditValue}
-                        onChange={(e) => setInlineEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const [cat, sub] = inlineEditValue.split('/');
-                            updateItem(selectedItem.id, { category: cat, subCategory: sub || '' });
-                            setSelectedItem({ ...selectedItem, category: cat, subCategory: sub || '' });
-                            setInlineEditField(null);
-                          } else if (e.key === 'Escape') {
-                            setInlineEditField(null);
-                          }
-                        }}
-                        className="bg-transparent border-none outline-none text-foreground text-xs"
-                        autoFocus
-                      >
+                    <div className="col-span-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                      <span className="text-xs text-muted-foreground mb-1.5 block">选择分类：</span>
+                      <div className="flex flex-wrap gap-1.5">
                         {CATEGORIES.filter(c => c.key !== 'all').map(c => (
-                          <option key={c.key} value={c.key}>{c.label}</option>
+                          <button
+                            key={c.key}
+                            onClick={() => {
+                              updateItem(selectedItem.id, { category: c.key });
+                              setSelectedItem({ ...selectedItem, category: c.key });
+                              setInlineEditField(null);
+                            }}
+                            className={`px-2 py-1 rounded text-xs transition-colors ${
+                              selectedItem.category === c.key
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-background text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {c.label}
+                          </button>
                         ))}
-                      </select>
-                    </span>
+                      </div>
+                      <button
+                        onClick={() => setInlineEditField(null)}
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        取消
+                      </button>
+                    </div>
                   ) : (
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
                       onDoubleClick={() => {
                         setInlineEditField('category');
-                        setInlineEditValue(selectedItem.category);
                       }}
                       title="双击编辑分类"
                     >
                       <Shirt className="w-3 h-3 text-muted-foreground" />
                       <span className="text-muted-foreground">分类：</span>
-                      {selectedItem.category}/{selectedItem.subCategory}
+                      {selectedItem.category}
                     </span>
                   )}
 
                   {/* 季节 */}
                   {inlineEditField === 'season' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
-                      <span className="text-muted-foreground">季节：</span>
-                      <input
-                        type="text"
-                        value={inlineEditValue}
-                        onChange={(e) => setInlineEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const seasons = inlineEditValue.split(/[,，/]/).map(s => s.trim()).filter(Boolean);
-                            updateItem(selectedItem.id, { season: seasons });
-                            setSelectedItem({ ...selectedItem, season: seasons });
-                            setInlineEditField(null);
-                          } else if (e.key === 'Escape') {
-                            setInlineEditField(null);
-                          }
-                        }}
-                        className="w-20 bg-transparent border-none outline-none text-foreground text-xs"
-                        placeholder="春,秋"
-                        autoFocus
-                      />
-                    </span>
+                    <div className="col-span-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                      <span className="text-xs text-muted-foreground mb-1.5 block">选择季节：</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['春', '夏', '秋', '冬'].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              const newSeasons = selectedItem.season.includes(s)
+                                ? selectedItem.season.filter(x => x !== s)
+                                : [...selectedItem.season, s];
+                              updateItem(selectedItem.id, { season: newSeasons });
+                              setSelectedItem({ ...selectedItem, season: newSeasons });
+                            }}
+                            className={`px-2 py-1 rounded text-xs transition-colors ${
+                              selectedItem.season.includes(s)
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-background text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setInlineEditField(null)}
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        完成
+                      </button>
+                    </div>
                   ) : (
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
                       onDoubleClick={() => {
                         setInlineEditField('season');
-                        setInlineEditValue(selectedItem.season.join(','));
                       }}
                       title="双击编辑季节"
                     >
@@ -544,8 +561,8 @@ export default function WardrobePage() {
 
                   {/* 材质 */}
                   {inlineEditField === 'material' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-xs">
-                      <span className="text-muted-foreground">材质：</span>
+                    <div className="col-span-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                      <span className="text-xs text-muted-foreground mb-1.5 block">输入材质：</span>
                       <input
                         type="text"
                         value={inlineEditValue}
@@ -559,10 +576,29 @@ export default function WardrobePage() {
                             setInlineEditField(null);
                           }
                         }}
-                        className="w-16 bg-transparent border-none outline-none text-foreground text-xs"
+                        className="w-full px-2 py-1 bg-background border border-border rounded text-xs text-foreground outline-none focus:border-primary"
+                        placeholder="如：棉、羊毛、丝绸..."
                         autoFocus
                       />
-                    </span>
+                      <div className="flex justify-between mt-2">
+                        <button
+                          onClick={() => setInlineEditField(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          取消
+                        </button>
+                        <button
+                          onClick={() => {
+                            updateItem(selectedItem.id, { material: inlineEditValue });
+                            setSelectedItem({ ...selectedItem, material: inlineEditValue });
+                            setInlineEditField(null);
+                          }}
+                          className="text-xs text-primary hover:text-primary-hover"
+                        >
+                          确定
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground cursor-pointer hover:bg-muted transition-colors"
@@ -577,13 +613,6 @@ export default function WardrobePage() {
                       {selectedItem.material || '未设置'}
                     </span>
                   )}
-
-                  {/* 穿着次数 - 只读 */}
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/60 text-xs text-foreground">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">穿着：</span>
-                    {selectedItem.wearCount}次
-                  </span>
                 </div>
 
                 {/* 提示 */}
