@@ -182,8 +182,15 @@ export default function WardrobePage() {
       {/* Simplified Header - 2 layers */}
       <header className="sticky top-0 z-40 glass-surface border-b border-border">
         <div className="px-4 pt-[env(safe-area-inset-top)]">
-          {/* Layer 1: Title + View Mode + Search Toggle */}
+          {/* Layer 1: Search Toggle + Title + View Mode */}
           <div className="flex items-center gap-2 h-12">
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+            <div className="flex-1" />
             <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('items')}
@@ -208,13 +215,6 @@ export default function WardrobePage() {
                 搭配
               </button>
             </div>
-            <div className="flex-1" />
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-            </button>
           </div>
 
           {/* Layer 2: Search (collapsible) + Category Chips */}
