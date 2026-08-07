@@ -179,22 +179,22 @@ export default function WardrobePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Simplified Header - 2 layers */}
-      <header className="sticky top-0 z-40 glass-surface border-b border-border">
+      {/* Header with breathing room */}
+      <header className="sticky top-0 z-40 glass-surface border-b border-border/40">
         <div className="px-4 pt-[env(safe-area-inset-top)]">
           {/* Layer 1: Search Toggle + Title + View Mode */}
-          <div className="flex items-center gap-2 h-12">
+          <div className="flex items-center gap-3 h-14">
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`p-2.5 rounded-xl transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
             </button>
             <div className="flex-1" />
-            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-muted/80 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('items')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   viewMode === 'items'
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground'
@@ -205,7 +205,7 @@ export default function WardrobePage() {
               </button>
               <button
                 onClick={() => setViewMode('outfits')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   viewMode === 'outfits'
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground'
@@ -218,7 +218,7 @@ export default function WardrobePage() {
           </div>
 
           {/* Layer 2: Search (collapsible) + Category Chips */}
-          <div className={`overflow-hidden transition-all duration-200 ${showSearch ? 'max-h-24 pb-2' : 'max-h-12 pb-2'}`}>
+          <div className={`overflow-hidden transition-all duration-200 ${showSearch ? 'max-h-24 pb-3' : 'max-h-12 pb-3'}`}>
             {showSearch && (
               <div className="relative mb-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -262,7 +262,7 @@ export default function WardrobePage() {
       </header>
 
       {/* Content */}
-      <div className="px-4 py-4">
+      <div className="px-4 pt-5 pb-6">
         {viewMode === 'items' ? (
           /* Items Grid */
           filteredItems.length > 0 ? (

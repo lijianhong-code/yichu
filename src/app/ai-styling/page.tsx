@@ -662,24 +662,25 @@ export default function AIStylingPage() {
       <div className={`min-h-screen bg-background pb-24`}>
         {/* ==================== CONTEXT BAR (always visible) ==================== */}
         <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {(pageState === 'preview' || canvasItems.length > 0) && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
-              <div>
-                <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  搭配
-                </h1>
-                {(pageState !== 'empty' || canvasItems.length > 0) && (
-                  <p className="text-[10px] text-muted-foreground">
-                    上海 · 22-28°C · {pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}
-                  </p>
+          <div className="px-4 pt-[env(safe-area-inset-top)] pb-3">
+            <div className="flex items-center justify-between h-14">
+              <div className="flex items-center gap-3">
+                {(pageState === 'preview' || canvasItems.length > 0) && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
                 )}
+                <div>
+                  <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                    搭配
+                  </h1>
+                  {(pageState !== 'empty' || canvasItems.length > 0) && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      上海 · 22-28°C · {pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
             <div className="flex items-center gap-1">
               {/* Undo/Redo when there are canvas items */}
               {canvasItems.length > 0 && (
@@ -710,11 +711,12 @@ export default function AIStylingPage() {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </div>
+            </div>
           </div>
         </header>
 
         {/* ==================== PERMANENT OUTFIT AREA (常驻搭配区) ==================== */}
-        <div className="px-4 pt-4">
+        <div className="px-4 pt-5">
           <div className={`rounded-xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '48vh', maxHeight: '56vh' }}>
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
