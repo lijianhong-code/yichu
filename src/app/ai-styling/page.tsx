@@ -6,6 +6,7 @@ import {
   Send,
   Sparkles,
   ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Check,
   Lock,
@@ -660,68 +661,50 @@ export default function AIStylingPage() {
   return (
     <TooltipProvider>
       <div className={`min-h-screen bg-background pb-24`}>
-        {/* ==================== CONTEXT BAR (always visible) ==================== */}
+        {/* ==================== SIMPLIFIED HEADER ==================== */}
         <header className="sticky top-0 z-20 glass-surface border-b border-border/30">
           <div className="px-4 pt-[env(safe-area-inset-top)] pb-3">
             <div className="flex items-center justify-between h-14">
               <div className="flex items-center gap-3">
                 {(pageState === 'preview' || canvasItems.length > 0) && (
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
-                    <ChevronLeft className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
+                    <ChevronLeft className="h-5 w-5" />
                   </Button>
                 )}
-                <div>
-                  <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                    搭配
-                  </h1>
-                  {(pageState !== 'empty' || canvasItems.length > 0) && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      上海 · 22-28°C · {pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}
-                    </p>
-                  )}
-                </div>
+                <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                  搭配
+                </h1>
               </div>
-            <div className="flex items-center gap-1">
-              {/* Undo/Redo when there are canvas items */}
-              {canvasItems.length > 0 && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo} disabled={editHistoryIndex <= 0}>
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>撤销</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRedo} disabled={editHistoryIndex >= editHistory.length - 1}>
-                        <Redo2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>重做</TooltipContent>
-                  </Tooltip>
-                </>
-              )}
-              {/* History and more menu */}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory(true)}>
-                <History className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMoreMenu(true)}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShowHistory(true)}>
+                  <History className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShowMoreMenu(true)}>
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* ==================== PERMANENT OUTFIT AREA (常驻搭配区) ==================== */}
-        <div className="px-4 pt-5">
-          <div className={`rounded-xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '48vh', maxHeight: '56vh' }}>
+        {/* ==================== CANVAS AREA (沉浸式) ==================== */}
+        <div className="px-4 pt-4">
+          {/* Scene info tag */}
+          {(pageState !== 'empty' || canvasItems.length > 0) && (
+            <div className="flex items-center justify-center mb-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 text-xs text-muted-foreground">
+                <span>上海 · 22-28°C</span>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                <span>{pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ minHeight: '50vh', maxHeight: '60vh' }}>
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
-                <img src="/empty-styling.jpeg" alt="" className="w-32 h-32 object-contain opacity-60 mb-4" />
+                <img src="/empty-styling.jpeg" alt="" className="w-28 h-28 object-contain opacity-50 mb-4" />
                 <p className="text-sm text-muted-foreground text-center">描述你的需求，AI 将为你智能搭配</p>
               </div>
             )}
@@ -810,7 +793,7 @@ export default function AIStylingPage() {
             )}
             
             {/* AI input area - OpenAI style */}
-            <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
+            <div className="relative rounded-2xl bg-muted/20 border border-border/30 overflow-hidden">
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
@@ -824,15 +807,15 @@ export default function AIStylingPage() {
                 }}
               />
               {/* Action bar below input */}
-              <div className="flex items-center justify-between px-3 pb-2">
-                <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`h-7 px-2.5 rounded-full text-xs gap-1.5 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                    className={`h-9 px-3 rounded-full text-xs gap-1.5 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
                     onClick={handleReferenceImageClick}
                   >
-                    <ImageIcon className="h-3.5 w-3.5" />
+                    <ImageIcon className="h-4 w-4" />
                     {referenceImage ? '已添加' : '参考图'}
                   </Button>
                   <input
@@ -842,15 +825,15 @@ export default function AIStylingPage() {
                     className="hidden"
                     onChange={handleFileChange}
                   />
-                  <div className="h-3 w-px bg-border/40" />
-                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                  <div className="h-4 w-px bg-border/40" />
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
                     {(quickScenarios || []).map((scenario) => (
                       <Button
                         key={scenario.label}
                         variant="ghost"
                         size="sm"
                         onClick={() => setInputValue(scenario.label)}
-                        className="h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1 shrink-0"
+                        className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1.5 shrink-0"
                       >
                         {iconMap[scenario.icon] || null}
                         {scenario.label}
@@ -860,7 +843,7 @@ export default function AIStylingPage() {
                 </div>
                 <Button
                   size="icon"
-                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-sm shrink-0"
+                  className="h-10 w-10 rounded-xl bg-primary hover:bg-primary/90 shadow-sm shrink-0"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
@@ -869,33 +852,23 @@ export default function AIStylingPage() {
               </div>
             </div>
 
-            {/* Two clear entry points */}
-            <div className="flex gap-3">
-              <Button
-                className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
-                onClick={handleGenerate}
-                disabled={!inputValue.trim()}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                AI 帮我搭
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-                onClick={handleOpenTray}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                手动搭一套
-              </Button>
-            </div>
+            {/* Manual styling entry */}
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-xl text-sm border-border/60 hover:bg-muted/40"
+              onClick={handleOpenTray}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              手动搭配
+            </Button>
           </div>
         )}
 
-        {/* PREVIEW STATE ACTIONS */}
+        {/* PREVIEW STATE ACTIONS - Card-based display */}
         {pageState === 'preview' && (
-          <div className="px-4 pt-4 space-y-3">
-            {/* Candidate thumbnails - 3 schemes - click to switch only */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="px-4 pt-4 space-y-4">
+            {/* Candidate cards - horizontal scroll */}
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {(candidates || []).map((candidate, index) => (
                 <button
                   key={candidate.id}
@@ -906,73 +879,79 @@ export default function AIStylingPage() {
                       setIsTransitioning(false);
                     }, 150);
                   }}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md card-interactive shrink-0 min-w-[100px] ${
+                  className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all duration-200 hover:shadow-md card-interactive shrink-0 min-w-[140px] ${
                     index === previewCandidateIndex
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
                       : 'border-border/30 bg-background/60'
                   }`}
                 >
-                  <div className="flex -space-x-1">
+                  <div className="flex -space-x-1.5">
                     {(candidate.outfit.items || []).slice(0, 3).map((item, idx) => (
                       item ? (
-                        <div key={item.id || idx} className="h-7 w-7 rounded-full bg-muted overflow-hidden border border-background">
+                        <div key={item.id || idx} className="h-9 w-9 rounded-full bg-muted overflow-hidden border-2 border-background">
                           <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
                         </div>
                       ) : null
                     ))}
                   </div>
-                  <span className={`text-xs font-medium ${
-                    index === previewCandidateIndex ? 'text-primary' : 'text-muted-foreground'
-                  }`}>
-                    {candidate.label}
-                  </span>
+                  <div className="text-left">
+                    <span className={`text-sm font-medium block ${
+                      index === previewCandidateIndex ? 'text-primary' : 'text-foreground'
+                    }`}>
+                      {candidate.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {candidate.outfit.items?.length || 0} 件单品
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
 
-            {/* AI Rating */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`h-3.5 w-3.5 ${
-                      star <= Math.round(calculateRating() / 2)
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-muted-foreground/30'
-                    }`}
-                  />
-                ))}
+            {/* AI Rating & Explanation Card */}
+            <div className="rounded-2xl bg-muted/30 border border-border/30 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-4 w-4 ${
+                        star <= Math.round(calculateRating() / 2)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-muted-foreground/30'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-muted-foreground">AI 推荐指数 {calculateRating().toFixed(1)}</span>
               </div>
-              <span className="text-xs text-muted-foreground">AI 推荐指数 {calculateRating().toFixed(1)}</span>
-            </div>
 
-            {/* Explanation */}
-            <div className="flex items-start gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-ai-400 mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
+              </div>
+              
+              <button
+                onClick={() => setShowWhy(true)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                查看推荐理由
+                <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
-            <button
-              onClick={() => setShowWhy(true)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              查看推荐理由
-            </button>
-
-            <Separator />
 
             {/* Main actions */}
             <div className="flex gap-3">
-              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all" onClick={handleWearToday}>
+              <Button className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all" onClick={handleWearToday}>
                 <Check className="h-4 w-4 mr-2" />
-                今天穿
+                今天穿这套
               </Button>
-              <Button variant="outline" className="flex-1 h-12 rounded-lg text-sm border-border/60 hover:bg-muted/40" onClick={() => { initCanvasFromOutfit(previewOutfit); setPageState('editing'); }}>
+              <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm border-border/60 hover:bg-muted/40" onClick={() => { initCanvasFromOutfit(previewOutfit); setPageState('editing'); }}>
                 <Pencil className="h-4 w-4 mr-2" />
-                编辑搭配
+                编辑
               </Button>
             </div>
-            <Button variant="ghost" className="w-full h-10 text-sm text-muted-foreground" onClick={handleGenerate}>
+            <Button variant="ghost" className="w-full h-11 text-sm text-muted-foreground rounded-xl" onClick={handleGenerate}>
               <RefreshCw className="h-4 w-4 mr-2" />
               重新生成
             </Button>
