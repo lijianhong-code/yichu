@@ -853,11 +853,11 @@ export default function AIStylingPage() {
               </div>
             </div>
 
-            {/* Manual styling entry */}
+            {/* Manual styling entry - directly enter editing state with tray open */}
             <Button
               variant="outline"
               className="w-full h-10 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-              onClick={handleOpenTray}
+              onClick={() => { setPageState('editing'); setTrayOpen(true); }}
             >
               <Pencil className="h-3.5 w-3.5 mr-1.5" />
               手动搭配
@@ -865,19 +865,10 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* MANUAL MODE Actions - minimal toolbar when canvas has items but not in editing/preview state */}
+        {/* MANUAL MODE - Redirect to editing state when canvas has items */}
         {pageState === 'empty' && canvasItems.length > 0 && (
           <div className="shrink-0 px-3 pt-2 pb-3 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 flex-1 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-                onClick={handleOpenTray}
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                添加单品
-              </Button>
               <Button
                 variant="outline"
                 size="icon"
@@ -896,12 +887,13 @@ export default function AIStylingPage() {
               >
                 <Redo2 className="h-4 w-4" />
               </Button>
+              <div className="flex-1" />
               <Button
                 className="h-10 px-4 rounded-lg text-sm btn-primary-glow"
-                onClick={() => { setPageState('editing'); }}
+                onClick={() => { setPageState('editing'); setTrayOpen(true); }}
               >
                 <Save className="h-4 w-4 mr-1.5" />
-                保存
+                保存搭配
               </Button>
             </div>
           </div>
@@ -1070,21 +1062,6 @@ export default function AIStylingPage() {
 
             {/* Canvas Toolbar */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-lg text-xs shrink-0"
-                    onClick={() => setTrayOpen(!trayOpen)}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    添加
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>从衣橱添加单品</TooltipContent>
-              </Tooltip>
-
               {canvasItems.length > 0 && (
                 <>
                   <Tooltip>
