@@ -100,102 +100,67 @@ export function WardrobeTray({
       )}
       style={{ height: "45%", minHeight: "220px", maxHeight: "320px" }}
     >
-      {/* Compact Header - Combined with collapse handle */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/20 shrink-0">
-        {/* Left: Title + Count */}
+      {/* Combined Filter Bar - Search + Categories in single row */}
+      <div className="px-3 py-2 border-b border-border/20 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            衣橱
-          </span>
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-            {filteredItems.length}
-          </span>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2">
-          {/* Search toggle */}
+          {/* Search toggle - fixed on left */}
           <Button
             variant={searchQuery ? "secondary" : "ghost"}
             size="icon"
             onClick={() => setSearchQuery(searchQuery ? "" : " ")}
-            className="w-8 h-8"
+            className="w-8 h-8 shrink-0"
             aria-label="搜索"
           >
-            <Search className="w-4 h-4" />
+            {searchQuery ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
           </Button>
 
-          {/* Add button (when items selected) */}
-          {selectedItems.length > 0 && (
-            <Button
-              size="sm"
-              onClick={() => onConfirmAdd?.(selectedItems)}
-              className="h-8 px-3 text-xs font-medium"
-            >
-              添加 ({selectedItems.length})
-            </Button>
-          )}
-
-          {/* Collapse button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="w-8 h-8"
-            aria-label="收起"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Search Input - Shows when active */}
-      {searchQuery && (
-        <div className="px-3 py-2 border-b border-border/20 shrink-0">
-          <div className="relative">
+          {/* Search Input - replaces categories when active */}
+          {searchQuery ? (
             <Input
               autoFocus
               placeholder="搜索衣物..."
               value={searchQuery === " " ? "" : searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 text-sm pl-3 pr-9"
+              className="h-8 text-sm flex-1"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-1 top-1 w-7 h-7"
-              aria-label="清除搜索"
-            >
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
+          ) : (
+            /* Category Filter - Horizontal scroll */
+            <ScrollArea className="flex-1">
+              <div className="flex gap-1.5">
+                {CATEGORIES.map((cat) => (
+                  <Button
+                    key={cat}
+                    variant={activeCategory === cat ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveCategory(cat)}
+                    className={cn(
+                      "h-8 px-3 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                      activeCategory === cat
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {cat}
+                    <span className="ml-1 text-[10px] opacity-70">
+                      {wardrobeItems.filter((i: WardrobeItem) => cat === "全部" || i.category === cat).length}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
 
-      {/* Category Filter - Horizontal scroll */}
-      <div className="px-3 py-2 border-b border-border/20 shrink-0">
-        <ScrollArea className="w-full">
-          <div className="flex gap-2">
-            {CATEGORIES.map((cat) => (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(cat)}
-                className={cn(
-                  "h-8 px-3 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                  activeCategory === cat
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-background border-border hover:bg-muted"
-                )}
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" className="h-0" />
-        </ScrollArea>
+          {/* Collapse button - fixed on right */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="w-8 h-8 shrink-0"
+            aria-label="收起"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Items Grid - Scrollable */}
