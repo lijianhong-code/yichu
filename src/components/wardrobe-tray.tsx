@@ -94,11 +94,10 @@ export function WardrobeTray({
   return (
     <div
       className={cn(
-        "bg-background border-t border-border/30 flex flex-col",
+        "bg-background border-t border-border/30 flex flex-col h-full",
         "animate-in slide-in-from-bottom duration-200",
         className
       )}
-      style={{ height: "45%", minHeight: "220px", maxHeight: "320px" }}
     >
       {/* Combined Filter Bar - Search + Categories in single row */}
       <div className="px-3 py-2 border-b border-border/20 shrink-0">
