@@ -5,7 +5,7 @@ import { useState, useMemo } from "react"
 import { Search, X, Check, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+
 import { cn } from "@/lib/utils"
 import { wardrobeItems } from "@/lib/mock-data"
 import type { WardrobeItem } from "@/lib/mock-data"
@@ -124,8 +124,8 @@ export function WardrobeTray({
             />
           ) : (
             /* Category Filter - Horizontal scroll */
-            <ScrollArea className="flex-1">
-              <div className="flex gap-1.5">
+            <div className="flex-1 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-1.5 w-max">
                 {CATEGORIES.map((cat) => (
                   <Button
                     key={cat}
@@ -133,7 +133,7 @@ export function WardrobeTray({
                     size="sm"
                     onClick={() => setActiveCategory(cat)}
                     className={cn(
-                      "h-8 px-3 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                      "h-8 px-3 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all",
                       activeCategory === cat
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted/50 text-muted-foreground hover:bg-muted"
@@ -146,7 +146,7 @@ export function WardrobeTray({
                   </Button>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
 
           {/* Collapse button - fixed on right */}
