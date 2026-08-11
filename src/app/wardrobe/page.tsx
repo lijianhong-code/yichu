@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
   DialogContent,
@@ -184,37 +185,31 @@ export default function WardrobePage() {
         <div className="px-4 pt-[env(safe-area-inset-top)]">
           {/* Layer 1: Search Toggle + Title + View Mode */}
           <div className="flex items-center gap-3 h-14">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowSearch(!showSearch)}
-              className={`p-2.5 rounded-xl transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`rounded-xl ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
             >
               {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-            </button>
+            </Button>
             <div className="flex-1" />
-            <div className="flex items-center gap-1 bg-muted/80 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('items')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'items'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground'
-                }`}
-              >
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => v && setViewMode(v as 'items' | 'outfits')}
+              variant="outline"
+              className="bg-muted/80 rounded-xl p-1"
+            >
+              <ToggleGroupItem value="items" className="gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
                 <Shirt className="w-3.5 h-3.5" />
                 单品
-              </button>
-              <button
-                onClick={() => setViewMode('outfits')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'outfits'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground'
-                }`}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="outfits" className="gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
                 搭配
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
           {/* Layer 2: Search (collapsible) + Category Chips */}
@@ -238,18 +233,15 @@ export default function WardrobePage() {
                 className="flex items-center gap-2 overflow-x-auto no-scrollbar"
               >
                 {CATEGORIES.map((cat) => (
-                  <button
+                  <Badge
                     key={cat.key}
+                    variant={activeCategory === cat.key ? 'default' : 'outline'}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap cursor-pointer shrink-0"
                     onClick={() => setActiveCategory(cat.key)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                      activeCategory === cat.key
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
                   >
                     {cat.label}
                     <span className="text-xs opacity-70">{itemCounts[cat.key] || 0}</span>
-                  </button>
+                  </Badge>
                 ))}
               </div>
               {/* Scroll hint gradient */}
@@ -283,9 +275,9 @@ export default function WardrobePage() {
 
                   {/* Status Badge */}
                   {item.status !== 'available' && (
-                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_CONFIG[item.status]?.color || ''}`}>
+                    <Badge className={`absolute top-2 left-2 text-[10px] ${STATUS_CONFIG[item.status]?.color || ''}`}>
                       {STATUS_CONFIG[item.status]?.label || item.status}
-                    </div>
+                    </Badge>
                   )}
 
                   {/* Color Indicator */}
@@ -354,9 +346,9 @@ export default function WardrobePage() {
 
                   {/* AI Badge */}
                   {outfit.source === 'ai_text' && (
-                    <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
+                    <Badge variant="secondary" className="absolute top-2 left-2 text-[10px]">
                       AI
-                    </div>
+                    </Badge>
                   )}
 
                   {/* Outfit Info */}
@@ -386,16 +378,16 @@ export default function WardrobePage() {
       </div>
 
       {/* FAB - with scroll offset and view-mode awareness */}
-      <button
+      <Button
         onClick={() => viewMode === 'items' ? setIsUploadSheetOpen(true) : router.push('/ai-styling')}
-        className="fixed z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="fixed z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:bg-primary-hover"
         style={{
           bottom: `calc(6rem + ${fabOffset}px)`,
           right: 'max(1rem, calc((100vw - 36rem) / 2 + 1rem))',
         }}
       >
         {viewMode === 'items' ? <Plus className="w-6 h-6" /> : <Sparkles className="w-5 h-5" />}
-      </button>
+      </Button>
 
       {/* Item Detail Sheet - Bottom Sheet instead of Dialog */}
       <Sheet open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
@@ -448,12 +440,14 @@ export default function WardrobePage() {
                           />
                         ))}
                       </div>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setInlineEditField(null)}
-                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="mt-2 text-xs h-6"
                       >
                         取消
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span
@@ -492,12 +486,14 @@ export default function WardrobePage() {
                           </button>
                         ))}
                       </div>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setInlineEditField(null)}
-                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="mt-2 text-xs h-6"
                       >
                         取消
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span
@@ -538,12 +534,14 @@ export default function WardrobePage() {
                           </button>
                         ))}
                       </div>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setInlineEditField(null)}
-                        className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="mt-2 text-xs h-6"
                       >
                         完成
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span
@@ -563,7 +561,7 @@ export default function WardrobePage() {
                   {inlineEditField === 'material' ? (
                     <div className="col-span-2 p-2 rounded-md bg-primary/10 border border-primary/30">
                       <span className="text-xs text-muted-foreground mb-1.5 block">输入材质：</span>
-                      <input
+                      <Input
                         type="text"
                         value={inlineEditValue}
                         onChange={(e) => setInlineEditValue(e.target.value)}
@@ -576,27 +574,31 @@ export default function WardrobePage() {
                             setInlineEditField(null);
                           }
                         }}
-                        className="w-full px-2 py-1 bg-background border border-border rounded text-xs text-foreground outline-none focus:border-primary"
+                        className="h-7 text-xs bg-background"
                         placeholder="如：棉、羊毛、丝绸..."
                         autoFocus
                       />
                       <div className="flex justify-between mt-2">
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setInlineEditField(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
+                          className="text-xs h-6"
                         >
                           取消
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             updateItem(selectedItem.id, { material: inlineEditValue });
                             setSelectedItem({ ...selectedItem, material: inlineEditValue });
                             setInlineEditField(null);
                           }}
-                          className="text-xs text-primary hover:text-primary-hover"
+                          className="text-xs h-6 text-primary"
                         >
                           确定
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (

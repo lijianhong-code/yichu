@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   AlertDialog,
@@ -130,18 +131,18 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+          <Card className="text-center p-3">
             <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalItems}</p>
             <p className="text-xs text-muted-foreground mt-1">衣物</p>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+          </Card>
+          <Card className="text-center p-3">
             <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalOutfits}</p>
             <p className="text-xs text-muted-foreground mt-1">搭配</p>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/50">
+          </Card>
+          <Card className="text-center p-3">
             <p className="text-2xl font-semibold text-primary tabular-nums">{stats.utilizationRate}%</p>
             <p className="text-xs text-muted-foreground mt-1">利用率</p>
-          </div>
+          </Card>
         </div>
       </div>
 
@@ -184,22 +185,23 @@ export default function ProfilePage() {
         <Card>
           <CardContent className="p-0">
             {menuItems.map((item, index) => (
-              <button
+              <Button
                 key={item.action}
+                variant="ghost"
                 onClick={() => handleMenuClick(item.action)}
-                className={`flex items-center gap-3 w-full px-4 py-3.5 text-left hover:bg-muted/50 active:bg-muted transition-colors ${
+                className={`flex items-center gap-3 w-full h-auto px-4 py-3.5 text-left justify-start ${
                   index !== menuItems.length - 1 ? 'border-b border-border' : ''
                 }`}
               >
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                   <item.icon className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-left">
                   <span className="text-sm text-foreground block">{item.label}</span>
                   <span className="text-xs text-muted-foreground block mt-0.5">{item.desc}</span>
                 </div>
                 {item.showChevron && <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
-              </button>
+              </Button>
             ))}
           </CardContent>
         </Card>
@@ -231,7 +233,7 @@ export default function ProfilePage() {
           <div className="py-4 space-y-3 overflow-y-auto">
             {state.records.length > 0 ? (
               state.records.map((record) => (
-                <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Card key={record.id} className="flex items-center gap-3 p-3">
                   <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
                     {record.outfit.items[0] && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -242,7 +244,7 @@ export default function ProfilePage() {
                     <p className="text-sm font-medium text-foreground truncate">{record.date}</p>
                     <p className="text-xs text-muted-foreground">{record.outfit.items.length} 件单品</p>
                   </div>
-                </div>
+                </Card>
               ))
             ) : (
               <div className="text-center py-12">
@@ -267,17 +269,14 @@ export default function ProfilePage() {
               <h4 className="text-sm font-medium text-foreground mb-3">偏好风格</h4>
               <div className="flex flex-wrap gap-2">
                 {['休闲', '通勤', '运动', '约会', '正式', '街头', '文艺'].map((style) => (
-                  <button
+                  <Badge
                     key={style}
+                    variant={selectedStyles.includes(style) ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
                     onClick={() => toggleStyle(style)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      selectedStyles.includes(style)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
                   >
                     {style}
-                  </button>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -285,17 +284,14 @@ export default function ProfilePage() {
               <h4 className="text-sm font-medium text-foreground mb-3">偏好颜色</h4>
               <div className="flex flex-wrap gap-2">
                 {['黑白灰', '大地色', '蓝色系', '绿色系', '红色系', '粉色系', '紫色系'].map((color) => (
-                  <button
+                  <Badge
                     key={color}
+                    variant={selectedColors.includes(color) ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
                     onClick={() => toggleColor(color)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      selectedColors.includes(color)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
                   >
                     {color}
-                  </button>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -303,17 +299,14 @@ export default function ProfilePage() {
               <h4 className="text-sm font-medium text-foreground mb-3">常穿场合</h4>
               <div className="flex flex-wrap gap-2">
                 {['办公室', '周末', '聚会', '运动', '约会', '旅行'].map((occasion) => (
-                  <button
+                  <Badge
                     key={occasion}
+                    variant={selectedOccasions.includes(occasion) ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
                     onClick={() => toggleOccasion(occasion)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      selectedOccasions.includes(occasion)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
                   >
                     {occasion}
-                  </button>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -362,12 +355,7 @@ export default function ProfilePage() {
                   <p className="text-xs text-muted-foreground">跟随系统或手动切换</p>
                 </div>
               </div>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`w-12 h-7 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <div className={`w-5 h-5 rounded-full bg-background shadow-sm transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
+              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
@@ -377,12 +365,7 @@ export default function ProfilePage() {
                   <p className="text-xs text-muted-foreground">穿搭提醒与 AI 建议</p>
                 </div>
               </div>
-              <button
-                onClick={() => setNotifications(!notifications)}
-                className={`w-12 h-7 rounded-full transition-colors ${notifications ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <div className={`w-5 h-5 rounded-full bg-background shadow-sm transition-transform ${notifications ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
+              <Switch checked={notifications} onCheckedChange={setNotifications} />
             </div>
             <div className="pt-2">
               <Button variant="outline" className="w-full" onClick={() => { setIsSettingsSheetOpen(false); toast.success('设置已保存'); }}>
@@ -400,7 +383,7 @@ export default function ProfilePage() {
             <SheetTitle>隐私与数据</SheetTitle>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+            <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-foreground">本地存储数据</span>
                 <span className="text-sm font-medium text-foreground tabular-nums">
@@ -411,15 +394,15 @@ export default function ProfilePage() {
                 <span className="text-sm text-foreground">穿着记录</span>
                 <span className="text-sm font-medium text-foreground tabular-nums">{state.records.length} 条</span>
               </div>
-            </div>
-            <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+            </Card>
+            <Card className="p-4 border-destructive/20 bg-destructive/5">
               <p className="text-sm font-medium text-foreground mb-1">清除所有数据</p>
               <p className="text-xs text-muted-foreground mb-3">删除所有衣物、搭配和记录，此操作不可撤销</p>
               <Button variant="destructive" size="sm" onClick={handleClearData}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 清除数据
               </Button>
-            </div>
+            </Card>
           </div>
         </SheetContent>
       </Sheet>
@@ -437,10 +420,10 @@ export default function ProfilePage() {
               { q: '如何编辑搭配？', a: '在搭配页面点击「编辑搭配」，可以拖拽调整位置、添加或移除单品。' },
               { q: '数据存在哪里？', a: '所有数据存储在浏览器本地，不会上传到服务器。清除浏览器数据会丢失所有内容。' },
             ].map((faq, i) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/50">
+              <Card key={i} className="p-3">
                 <p className="text-sm font-medium text-foreground mb-1">{faq.q}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">{faq.a}</p>
-              </div>
+              </Card>
             ))}
             <div className="pt-2">
               <Button variant="outline" className="w-full" onClick={() => { setIsHelpSheetOpen(false); toast.info('反馈功能即将上线'); }}>
@@ -459,28 +442,28 @@ export default function ProfilePage() {
           </SheetHeader>
           <div className="py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50">
+              <Card className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">身高</p>
                 <p className="text-lg font-semibold text-foreground tabular-nums">{user.height || '--'} cm</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
+              </Card>
+              <Card className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">体重</p>
                 <p className="text-lg font-semibold text-foreground tabular-nums">{user.weight || '--'} kg</p>
-              </div>
+              </Card>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50">
+              <Card className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">上衣</p>
                 <p className="text-sm font-medium text-foreground">{user.topSize || '--'}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
+              </Card>
+              <Card className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">下装</p>
                 <p className="text-sm font-medium text-foreground">{user.bottomSize || '--'}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
+              </Card>
+              <Card className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">鞋码</p>
                 <p className="text-sm font-medium text-foreground">{user.shoeSize || '--'}</p>
-              </div>
+              </Card>
             </div>
             <Button variant="outline" className="w-full" onClick={() => { setIsBodySheetOpen(false); toast.info('身形编辑功能即将上线'); }}>
               编辑身形数据

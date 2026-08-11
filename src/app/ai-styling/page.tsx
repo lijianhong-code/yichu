@@ -793,9 +793,9 @@ export default function AIStylingPage() {
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
                 <XCircle className="h-4 w-4 flex-shrink-0" />
                 <span className="flex-1">{aiError}</span>
-                <button onClick={() => setAiError(null)} className="text-destructive/60 hover:text-destructive">
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive/60 hover:text-destructive" onClick={() => setAiError(null)}>
                   <X className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             )}
             
@@ -972,13 +972,15 @@ export default function AIStylingPage() {
                 <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
               </div>
               
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowWhy(true)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                className="h-auto px-0 py-0 text-xs text-muted-foreground hover:text-primary hover:bg-transparent transition-colors"
               >
                 查看推荐理由
-                <ChevronRight className="h-3 w-3" />
-              </button>
+                <ChevronRight className="h-3 w-3 ml-1" />
+              </Button>
             </div>
 
             {/* Main actions */}
@@ -1138,12 +1140,14 @@ export default function AIStylingPage() {
                       <SparklesIcon className="h-3.5 w-3.5 text-ai-400" />
                       <span className="text-xs font-medium text-ai-600">AI 已添加 {aiCompleteResults.length} 件单品</span>
                     </div>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-1 py-0 text-xs text-ai-600/60 hover:text-ai-600 hover:bg-transparent"
                       onClick={() => setShowAICompleteResults(false)}
-                      className="text-xs text-ai-600/60 hover:text-ai-600"
                     >
                       关闭
-                    </button>
+                    </Button>
                   </div>
                   <div className="space-y-1.5 max-h-24 overflow-y-auto">
                     {aiCompleteResults.map((result, idx) => (
@@ -1277,10 +1281,11 @@ export default function AIStylingPage() {
               <div className="space-y-3 py-4">
                 {state.records.length > 0 ? (
                   state.records.slice(0, 20).map((record) => (
-                    <button
+                    <Button
+                      variant="ghost"
                       key={record.id}
                       onClick={() => handleLoadHistory(record)}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 w-full text-left hover:bg-muted transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 w-full text-left hover:bg-muted transition-colors h-auto justify-start"
                     >
                       <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
                         {record.outfit.items[0] && (
@@ -1293,7 +1298,7 @@ export default function AIStylingPage() {
                         <p className="text-xs text-muted-foreground">{record.outfit.items.length} 件单品 · {record.outfit.name || '搭配方案'}</p>
                       </div>
                       <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180 flex-shrink-0" />
-                    </button>
+                    </Button>
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">

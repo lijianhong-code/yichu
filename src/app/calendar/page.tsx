@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Card, CardContent } from '@/components/ui/card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
 
@@ -193,24 +195,16 @@ export default function CalendarPage() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">穿着日历</h1>
             </div>
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode('week')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'week' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                }`}
-              >
-                周
-              </button>
-              <button
-                onClick={() => setViewMode('month')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'month' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                }`}
-              >
-                月
-              </button>
-            </div>
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(val) => val && setViewMode(val as 'week' | 'month')}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="week">周</ToggleGroupItem>
+              <ToggleGroupItem value="month">月</ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </div>
       </header>
@@ -325,112 +319,114 @@ export default function CalendarPage() {
 
       {/* Date Detail Section */}
       <div className="px-4 mt-6">
-        <div className="bg-card rounded-lg border border-border p-4">
-          {/* Date Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-medium text-foreground">
-                {formatDateDisplay(selectedDate)}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {(() => {
-                  const weather = getWeatherForDate(selectedDate);
-                  const weatherLabels = { sunny: '晴', cloudy: '多云', rainy: '雨' };
-                  return `${weatherLabels[weather]} · ${isToday ? '今天' : isPast ? '过去' : '未来'}`;
-                })()}
-              </p>
+        <Card>
+          <CardContent className="p-4">
+            {/* Date Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-medium text-foreground">
+                  {formatDateDisplay(selectedDate)}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {(() => {
+                    const weather = getWeatherForDate(selectedDate);
+                    const weatherLabels = { sunny: '晴', cloudy: '多云', rainy: '雨' };
+                    return `${weatherLabels[weather]} · ${isToday ? '今天' : isPast ? '过去' : '未来'}`;
+                  })()}
+                </p>
+              </div>
+              <Badge variant={hasRecord ? 'default' : 'secondary'} className="text-xs">
+                {hasRecord ? '已记录' : '未记录'}
+              </Badge>
             </div>
-            <Badge variant={hasRecord ? 'default' : 'secondary'} className="text-xs">
-              {hasRecord ? '已记录' : '未记录'}
-            </Badge>
-          </div>
 
-          {/* Outfit Display */}
-          {hasRecord ? (
-            <div className="space-y-3">
-              {selectedDateRecords.map((record) => (
-                <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  {/* Outfit Preview */}
-                  <div className="relative w-16 h-16 rounded-md bg-card overflow-hidden flex-shrink-0">
-                    {record.outfit.items.slice(0, 2).map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="absolute inset-0"
-                        style={{
-                          transform: `translateY(${index * 4}px) scale(${1 - index * 0.1})`,
-                          zIndex: 2 - index,
-                        }}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
-                      </div>
-                    ))}
+            {/* Outfit Display */}
+            {hasRecord ? (
+              <div className="space-y-3">
+                {selectedDateRecords.map((record) => (
+                  <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    {/* Outfit Preview */}
+                    <div className="relative w-16 h-16 rounded-md bg-card overflow-hidden flex-shrink-0">
+                      {record.outfit.items.slice(0, 2).map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="absolute inset-0"
+                          style={{
+                            transform: `translateY(${index * 4}px) scale(${1 - index * 0.1})`,
+                            zIndex: 2 - index,
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Outfit Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {record.outfit.name || '搭配方案'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {record.outfit.items.length} 件单品
+                        {record.outfit.occasion && ` · ${record.outfit.occasion}`}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Outfit Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {record.outfit.name || '搭配方案'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {record.outfit.items.length} 件单品
-                      {record.outfit.occasion && ` · ${record.outfit.occasion}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
-              <p className="text-sm text-muted-foreground">
-                {isFuture ? '还未到来，敬请期待' : isToday ? '今天还没有记录，快去搭配吧' : '这天没有记录'}
-              </p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="mt-4 flex gap-2">
-            {isFuture ? (
-              hasRecord ? (
-                <Button variant="outline" className="flex-1" onClick={handleGoToStyling}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  修改搭配
-                </Button>
-              ) : (
-                <Button variant="outline" className="flex-1" onClick={handleGoToStyling}>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  为这天搭配
-                </Button>
-              )
-            ) : isToday ? (
-              hasRecord ? (
-                <Button variant="outline" className="flex-1" onClick={handleRewear}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  再穿一次
-                </Button>
-              ) : (
-                <Button className="flex-1 bg-primary hover:bg-primary-hover" onClick={handleWearToday}>
-                  <Shirt className="w-4 h-4 mr-2" />
-                  今天穿什么
-                </Button>
-              )
+                ))}
+              </div>
             ) : (
-              hasRecord ? (
-                <Button variant="outline" className="flex-1" onClick={handleRewear}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  再穿一次
-                </Button>
-              ) : (
-                <Button variant="outline" className="flex-1" onClick={handleRecord}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  补记
-                </Button>
-              )
+              <div className="text-center py-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
+                <p className="text-sm text-muted-foreground">
+                  {isFuture ? '还未到来，敬请期待' : isToday ? '今天还没有记录，快去搭配吧' : '这天没有记录'}
+                </p>
+              </div>
             )}
-          </div>
-        </div>
+
+            {/* Action Buttons */}
+            <div className="mt-4 flex gap-2">
+              {isFuture ? (
+                hasRecord ? (
+                  <Button variant="outline" className="flex-1" onClick={handleGoToStyling}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    修改搭配
+                  </Button>
+                ) : (
+                  <Button variant="outline" className="flex-1" onClick={handleGoToStyling}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    为这天搭配
+                  </Button>
+                )
+              ) : isToday ? (
+                hasRecord ? (
+                  <Button variant="outline" className="flex-1" onClick={handleRewear}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    再穿一次
+                  </Button>
+                ) : (
+                  <Button className="flex-1 bg-primary hover:bg-primary-hover" onClick={handleWearToday}>
+                    <Shirt className="w-4 h-4 mr-2" />
+                    今天穿什么
+                  </Button>
+                )
+              ) : (
+                hasRecord ? (
+                  <Button variant="outline" className="flex-1" onClick={handleRewear}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    再穿一次
+                  </Button>
+                ) : (
+                  <Button variant="outline" className="flex-1" onClick={handleRecord}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    补记
+                  </Button>
+                )
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Record Sheet */}
