@@ -70,19 +70,20 @@ export function WardrobeTray({
 
   if (!expanded) {
     return (
-      <Button
-        variant="ghost"
+      <div
         onClick={onToggle}
         className={cn(
-          "w-full h-11 flex items-center justify-center gap-2",
-          "border-t border-neutral-200",
-          "text-sm text-neutral-600 hover:text-neutral-900",
+          "w-full h-8 flex items-center justify-center gap-2 cursor-pointer",
+          "bg-muted/30 border-t border-border/20",
+          "hover:bg-muted/50 transition-colors duration-200",
           className
         )}
       >
-        <span>展开衣橱托盘</span>
+        {/* Drag Handle */}
+        <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+        <span className="text-xs text-muted-foreground">展开衣橱</span>
         <svg
-          className="w-4 h-4"
+          className="w-3 h-3 text-muted-foreground"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -90,7 +91,7 @@ export function WardrobeTray({
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
         </svg>
-      </Button>
+      </div>
     )
   }
 
@@ -103,6 +104,14 @@ export function WardrobeTray({
       )}
       style={{ height: "40%", minHeight: "200px", maxHeight: "300px" }}
     >
+      {/* Drag Handle - Click to collapse */}
+      <div
+        onClick={onToggle}
+        className="flex items-center justify-center py-1 cursor-pointer hover:bg-muted/30 transition-colors"
+      >
+        <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+      </div>
+
       {/* Header - Compact */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-neutral-100 shrink-0">
         <span className="text-xs font-medium text-neutral-700">
