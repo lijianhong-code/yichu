@@ -774,7 +774,7 @@ export default function AIStylingPage() {
           </div>
           {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
           {(pageState === 'editing' || trayOpen) && (
-            <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm h-[45%] min-h-[220px] max-h-[320px]">
+            <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
               <WardrobeTray
                 expanded={true}
                 onToggle={() => setTrayOpen(!trayOpen)}

@@ -94,7 +94,7 @@ export function WardrobeTray({
   return (
     <div
       className={cn(
-        "bg-background border-t border-border/30 flex flex-col h-full",
+        "bg-background border-t border-border/30 flex flex-col",
         "animate-in slide-in-from-bottom duration-200",
         className
       )}
@@ -162,8 +162,8 @@ export function WardrobeTray({
         </div>
       </div>
 
-      {/* Items Grid - Scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      {/* Items Grid - Auto height based on content */}
+      <div className="overflow-y-auto overflow-x-hidden max-h-[40vh]">
         <div className="grid grid-cols-4 gap-2 p-2">
           {filteredItems.map((item) => {
             const selected = isSelected(item)
