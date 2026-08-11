@@ -690,18 +690,13 @@ export default function AIStylingPage() {
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
         <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          {/* Scene info tag */}
-          {(pageState !== 'empty' || canvasItems.length > 0) && (
-            <div className="flex items-center justify-center mb-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted/60 text-xs text-muted-foreground">
-                <span>上海 · 22-28°C</span>
-                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                <span>{pageState === 'loading' ? '生成中' : (previewOutfit as { occasion?: string }).occasion || '日常'}</span>
-              </div>
-            </div>
-          )}
-          
           <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: (pageState === 'editing' || trayOpen) ? '55%' : '100%', minHeight: '200px' }}>
+            {/* Weather/Location floating tag - top right */}
+            {(pageState !== 'empty' || canvasItems.length > 0) && (
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
+                <span>上海 · 22-28°C</span>
+              </div>
+            )}
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
