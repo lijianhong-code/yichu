@@ -18,11 +18,26 @@ import {
 const client = new LLMClient();
 
 // 导出 invoke 函数供 API 路由使用
-export async function invoke(messages: Message[], config?: { model?: string; temperature?: number }) {
-  return client.invoke(messages, {
-    model: config?.model || 'doubao-seed-2-0-mini-260215',
-    temperature: config?.temperature ?? 0.3,
-  });
+export async function invoke(messages: Message[], config?: { model?: string; temperature?: number; retries?: number }) {
+  const model = config?.model || 'doubao-seed-2-0-mini-260215';
+  const temperature = config?.temperature ?? 0.3;
+  const retries = config?.retries ?? 1;
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await client.invoke(messages, { model, temperature });
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`[LLM] Attempt ${attempt + 1}/${retries + 1} failed:`, lastError.message);
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+
+  throw lastError || new Error('LLM invocation failed after retries');
 }
 
 // 导出 Message 类型

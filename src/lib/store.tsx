@@ -24,6 +24,12 @@ export interface UserProfile {
   topSize?: string;
   bottomSize?: string;
   shoeSize?: string;
+  preferences?: {
+    styles: string[];
+    colors: string[];
+    occasions: string[];
+    avoidColors?: string[];
+  };
 }
 
 interface WardrobeState {

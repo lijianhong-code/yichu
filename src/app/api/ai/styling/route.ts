@@ -156,32 +156,106 @@ must_use 和 locked 单品必须保留；avoid 单品不得出现。
   }]
 }`;
 
+// Helper to create SSE event
+function sseEvent(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
 export async function POST(request: NextRequest) {
+  let body: {
+    userInput?: string;
+    weather?: { temperature?: number; condition?: string; feelsLike?: number };
+    mustUseItemIds?: string[];
+    avoidItemIds?: string[];
+    lockedItemIds?: string[];
+    referenceAnalysis?: {
+      garments?: Array<{ description: string; color: string; silhouette: string; formality: string }>;
+      color_palette?: string[];
+      style_tags?: string[];
+      formality_level?: string;
+    };
+    preferences?: {
+      style?: string[];
+      colors?: string[];
+      fit?: string;
+      avoid_colors?: string[];
+      avoid_patterns?: string[];
+    };
+  };
   try {
-    const body = await request.json();
-    const { userInput, weather, mustUseItemIds = [], avoidItemIds = [], lockedItemIds = [] } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
-    if (!userInput || typeof userInput !== 'string') {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-    }
+  const { userInput, weather, mustUseItemIds = [], avoidItemIds = [], lockedItemIds = [], referenceAnalysis, preferences } = body;
 
-    // Step 1: Slot-based recall (8-15 items per slot)
-    const candidatesBySlot = recallBySlot(wardrobeItems, weather);
-    const totalCandidates = Object.values(candidatesBySlot).reduce((sum, items) => sum + items.length, 0);
+  if (!userInput || typeof userInput !== 'string') {
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+  }
 
-    // Step 2: Build LLM input
-    const formattedCandidates: Record<string, ReturnType<typeof formatItemForLLM>[]> = {};
-    for (const [slot, items] of Object.entries(candidatesBySlot)) {
-      if (items.length > 0) {
-        formattedCandidates[slot] = items.map(formatItemForLLM);
-      }
-    }
+  // Create a ReadableStream for SSE
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(encoder.encode(sseEvent(event, data)));
+      };
 
-    const weatherText = weather
-      ? `${weather.condition || '未知'}，${weather.temperature || '?'}°C`
-      : '未知';
+      try {
+        // Step 1: Slot-based recall
+        send('progress', { stage: 0, message: '正在分析你的需求...' });
+        const candidatesBySlot = recallBySlot(wardrobeItems, weather);
+        const totalCandidates = Object.values(candidatesBySlot).reduce((sum, items) => sum + items.length, 0);
 
-    const userMessage = `当前天气：${weatherText}
+        send('progress', { stage: 1, message: `已从衣橱召回 ${totalCandidates} 件候选单品` });
+
+        // Step 2: Build LLM input
+        const formattedCandidates: Record<string, ReturnType<typeof formatItemForLLM>[]> = {};
+        for (const [slot, items] of Object.entries(candidatesBySlot)) {
+          if (items.length > 0) {
+            formattedCandidates[slot] = items.map(formatItemForLLM);
+          }
+        }
+
+        const weatherText = weather
+          ? `${weather.condition || '未知'}，${weather.temperature || '?'}°C`
+          : '未知';
+
+        // Build reference analysis section
+        let referenceSection = '';
+        if (referenceAnalysis) {
+          const garments = referenceAnalysis.garments?.map((g: { description: string; color: string; silhouette: string; formality: string }) =>
+            `- ${g.description}，颜色: ${g.color}，轮廓: ${g.silhouette}，正式度: ${g.formality}`
+          ).join('\n') || '无';
+          const palette = referenceAnalysis.color_palette?.join(', ') || '无';
+          referenceSection = `
+【参考图分析】
+用户提供了参考图片，分析结果如下：
+参考图单品：
+${garments}
+参考图配色：${palette}
+参考图风格：${referenceAnalysis.style_tags?.join(', ') || '无'}
+参考图正式度：${referenceAnalysis.formality_level || '未知'}
+请优先参考以上分析结果进行搭配，尽量匹配参考图的风格、配色和轮廓。
+`;
+        }
+
+        // Build preferences section
+        let preferencesSection = '';
+        if (preferences) {
+          const parts: string[] = [];
+          if (preferences.style?.length) parts.push(`风格偏好: ${preferences.style.join(', ')}`);
+          if (preferences.colors?.length) parts.push(`颜色偏好: ${preferences.colors.join(', ')}`);
+          if (preferences.fit) parts.push(`版型偏好: ${preferences.fit}`);
+          if (preferences.avoid_colors?.length) parts.push(`避免颜色: ${preferences.avoid_colors.join(', ')}`);
+          if (preferences.avoid_patterns?.length) parts.push(`避免图案: ${preferences.avoid_patterns.join(', ')}`);
+          if (parts.length > 0) {
+            preferencesSection = `\n【用户长期偏好】\n${parts.join('\n')}\n`;
+          }
+        }
+
+        const userMessage = `当前天气：${weatherText}
 
 候选衣橱（按槽位分组，共 ${totalCandidates} 件）：
 ${JSON.stringify(formattedCandidates, null, 2)}
@@ -189,108 +263,122 @@ ${JSON.stringify(formattedCandidates, null, 2)}
 必须使用的单品 ID：${mustUseItemIds.length > 0 ? mustUseItemIds.join(', ') : '无'}
 需要避免的单品 ID：${avoidItemIds.length > 0 ? avoidItemIds.join(', ') : '无'}
 锁定的单品 ID：${lockedItemIds.length > 0 ? lockedItemIds.join(', ') : '无'}
-
+${referenceSection}${preferencesSection}
 用户需求：${userInput}
 
 ${RECOMMEND_PROMPT}`;
 
-    // Step 3: Call LLM
-    const messages: Message[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userMessage },
-    ];
+        // Step 3: Call LLM
+        send('progress', { stage: 2, message: 'AI 正在生成搭配方案...' });
+        const messages: Message[] = [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ];
 
-    const result = await invoke(messages, { temperature: 0.3 });
-    const content = result.content || '';
+        const result = await invoke(messages, { temperature: 0.3 });
+        const content = result.content || '';
 
-    // Step 4: Parse and validate
-    let parsed: {
-      status: string;
-      outfits: Array<{
-        label: string;
-        item_ids: string[];
-        items: Array<{ item_id: string; slot: string; layer_order: number }>;
-        occasion: string;
-        style: string[];
-        reason_short: string;
-        reason_points: string[];
-        risks: string[];
-        constraint_check: Record<string, boolean>;
-        replaceable_slots: Array<{ slot: string; candidate_item_ids: string[]; replacement_effect: string }>;
-      }>;
-      clarifying_question?: string;
-      unmet_reason?: string;
-    };
+        send('progress', { stage: 3, message: '正在校验搭配结果...' });
 
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      // Try to extract JSON from response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Failed to parse LLM response');
+        // Step 4: Parse and validate
+        let parsed: {
+          status: string;
+          outfits: Array<{
+            label: string;
+            item_ids: string[];
+            items: Array<{ item_id: string; slot: string; layer_order: number }>;
+            occasion: string;
+            style: string[];
+            reason_short: string;
+            reason_points: string[];
+            risks: string[];
+            constraint_check: Record<string, boolean>;
+            replaceable_slots: Array<{ slot: string; candidate_item_ids: string[]; replacement_effect: string }>;
+          }>;
+          clarifying_question?: string;
+          unmet_reason?: string;
+        };
+
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('Failed to parse LLM response');
+          }
+        }
+
+        // Step 5: Server-side validation
+        const allItems = Object.values(candidatesBySlot).flat();
+        const validationErrors = validateOutfitRecommendations(parsed.outfits || [], {
+          must_use_item_ids: mustUseItemIds,
+          avoid_item_ids: avoidItemIds,
+          locked_item_ids: lockedItemIds,
+          allowed_item_ids: allItems.map(i => i.id),
+        });
+
+        if (validationErrors.length > 0) {
+          console.warn('[AI Styling] Validation errors:', validationErrors);
+          parsed.outfits = parsed.outfits.filter(outfit => {
+            const outfitErrors = validationErrors.filter(e => e.outfitIndex !== undefined && parsed.outfits.indexOf(outfit) === e.outfitIndex);
+            return outfitErrors.length === 0;
+          });
+        }
+
+        // Step 6: Transform to frontend format
+        const candidates = (parsed.outfits || []).map((outfit, index) => {
+          const items = (outfit.items || [])
+            .map(item => allItems.find(i => i.id === item.item_id))
+            .filter((item): item is WardrobeItem => item !== undefined);
+
+          return {
+            id: `ai-candidate-${index + 1}`,
+            label: outfit.label || `方案${index + 1}`,
+            outfit: {
+              id: `outfit-ai-${Date.now()}-${index + 1}`,
+              name: outfit.label || `方案${index + 1}`,
+              items,
+              occasion: outfit.occasion,
+              style: outfit.style,
+              explanation: outfit.reason_short,
+              weather: weatherText,
+              source: 'ai_text' as const,
+            },
+            reason: outfit.reason_short,
+            reasonPoints: outfit.reason_points,
+            risks: outfit.risks,
+            constraintCheck: outfit.constraint_check,
+            replaceableSlots: outfit.replaceable_slots,
+          };
+        });
+
+        // Send final result
+        send('result', {
+          success: true,
+          status: parsed.status || 'success',
+          candidates,
+          clarifyingQuestion: parsed.clarifying_question,
+          unmetReason: parsed.unmet_reason,
+          totalCandidates: totalCandidates,
+        });
+
+        send('done', {});
+      } catch (error) {
+        console.error('[AI Styling] Stream error:', error);
+        send('error', { message: error instanceof Error ? error.message : 'AI styling failed' });
+      } finally {
+        controller.close();
       }
-    }
+    },
+  });
 
-    // Step 5: Server-side validation
-    const allItems = Object.values(candidatesBySlot).flat();
-    const validationErrors = validateOutfitRecommendations(parsed.outfits || [], {
-      must_use_item_ids: mustUseItemIds,
-      avoid_item_ids: avoidItemIds,
-      locked_item_ids: lockedItemIds,
-      allowed_item_ids: allItems.map(i => i.id),
-    });
-
-    if (validationErrors.length > 0) {
-      console.warn('[AI Styling] Validation errors:', validationErrors);
-      // Try to fix once with repair prompt
-      // For now, filter out invalid outfits
-      parsed.outfits = parsed.outfits.filter(outfit => {
-        const outfitErrors = validationErrors.filter(e => e.outfitIndex !== undefined && parsed.outfits.indexOf(outfit) === e.outfitIndex);
-        return outfitErrors.length === 0;
-      });
-    }
-
-    // Step 6: Transform to frontend format
-    const candidates = (parsed.outfits || []).map((outfit, index) => {
-      const items = (outfit.items || [])
-        .map(item => allItems.find(i => i.id === item.item_id))
-        .filter((item): item is WardrobeItem => item !== undefined);
-
-      return {
-        id: `ai-candidate-${index + 1}`,
-        label: outfit.label || `方案${index + 1}`,
-        outfit: {
-          id: `outfit-ai-${Date.now()}-${index + 1}`,
-          name: outfit.label || `方案${index + 1}`,
-          items,
-          occasion: outfit.occasion,
-          style: outfit.style,
-          explanation: outfit.reason_short,
-          weather: weatherText,
-          source: 'ai_text' as const,
-        },
-        reason: outfit.reason_short,
-        reasonPoints: outfit.reason_points,
-        risks: outfit.risks,
-        constraintCheck: outfit.constraint_check,
-        replaceableSlots: outfit.replaceable_slots,
-      };
-    });
-
-    return NextResponse.json({
-      success: true,
-      status: parsed.status || 'success',
-      candidates,
-      clarifyingQuestion: parsed.clarifying_question,
-      unmetReason: parsed.unmet_reason,
-      totalCandidates: totalCandidates,
-      validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
-    });
-  } catch (error) {
-    console.error('[AI Styling] Error:', error);
-    return NextResponse.json({ error: 'AI styling failed' }, { status: 500 });
-  }
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }

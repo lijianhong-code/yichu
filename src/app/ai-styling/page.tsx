@@ -66,6 +66,7 @@ import { wardrobeItems, quickScenarios } from '@/lib/mock-data';
 import type { WardrobeItem, Outfit } from '@/lib/mock-data';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
+import { getCurrentWeather } from '@/lib/weather';
 
 const iconMap: Record<string, React.ReactNode> = {
   Briefcase: <Briefcase className="h-3.5 w-3.5" />,
@@ -98,6 +99,7 @@ interface CandidateOutfit {
 export default function AIStylingPage() {
   const router = useRouter();
   const { addRecord, addOutfit, state } = useWardrobe();
+  const user = state.user;
   const [pageState, setPageState] = useState<PageState>('empty');
   const [inputValue, setInputValue] = useState('');
   const [currentStage, setCurrentStage] = useState(0);
@@ -128,6 +130,12 @@ export default function AIStylingPage() {
 
   // Reference image state
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [referenceAnalysis, setReferenceAnalysis] = useState<{
+    garments: Array<{ description: string; color: string; silhouette: string; formality: string }>;
+    color_palette: string[];
+    style_tags: string[];
+    formality_level: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? { name: '', explanation: '', items: [] as WardrobeItem[] };
@@ -182,7 +190,7 @@ export default function AIStylingPage() {
     }
   }, [editHistory, editHistoryIndex]);
 
-  // Generate - call real AI API
+  // Generate - call real AI API with SSE streaming
   const handleGenerate = async () => {
     if (!inputValue.trim()) return;
     setPageState('loading');
@@ -192,13 +200,21 @@ export default function AIStylingPage() {
     setAiError(null);
 
     try {
+      // Build preferences from store
+      const userPreferences = user?.preferences ? {
+        style: user.preferences.styles,
+        colors: user.preferences.colors,
+        avoid_colors: user.preferences.avoidColors,
+      } : undefined;
+
       const response = await fetch('/api/ai/styling', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userInput: inputValue,
-          weather: { temperature: 18, condition: '晴转多云', feelsLike: 16 },
-          referenceImage: referenceImage || undefined,
+          weather: getCurrentWeather(user?.city || '上海'),
+          referenceAnalysis: referenceAnalysis || undefined,
+          preferences: userPreferences,
         }),
       });
 
@@ -206,14 +222,64 @@ export default function AIStylingPage() {
         throw new Error(`AI 服务返回 ${response.status}`);
       }
 
-      const data = await response.json();
+      // Handle SSE streaming
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('无法读取响应流');
+      }
 
-      if (data.success && data.candidates?.length > 0) {
-        const apiCandidates: CandidateOutfit[] = data.candidates.map((c: {
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalData: {
+        success: boolean;
+        status: string;
+        candidates: Array<{
           id: string;
           label: string;
           outfit: { name: string; explanation: string; items: WardrobeItem[] };
-        }) => ({
+        }>;
+      } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const eventType = line.slice(7).trim();
+            continue;
+          }
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.stage !== undefined) {
+                setCurrentStage(data.stage);
+                setProgress(Math.min(90, (data.stage + 1) * 25));
+              }
+              if (data.success !== undefined) {
+                finalData = data;
+              }
+              if (data.message && data.stage === undefined) {
+                // Error event
+                throw new Error(data.message);
+              }
+            } catch (e) {
+              if (e instanceof Error && e.message !== '无法读取响应流') {
+                // Not a parse error from our data, re-throw
+                if (e instanceof SyntaxError) continue;
+                throw e;
+              }
+            }
+          }
+        }
+      }
+
+      if (finalData && finalData.success && finalData.candidates?.length > 0) {
+        const apiCandidates: CandidateOutfit[] = finalData.candidates.map((c) => ({
           id: c.id,
           label: c.label,
           outfit: {
@@ -227,7 +293,7 @@ export default function AIStylingPage() {
         setProgress(100);
         setPageState('preview');
       } else {
-        throw new Error(data.error || 'AI 未能生成搭配方案');
+        throw new Error('AI 未能生成搭配方案');
       }
     } catch (error) {
       console.error('[AI Styling] Error:', error);
@@ -537,9 +603,35 @@ export default function AIStylingPage() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setReferenceImage(event.target?.result as string);
-        toast.success('参考图已上传', 'AI 将参考这张图片进行搭配');
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        setReferenceImage(base64);
+        setReferenceAnalysis(null); // Clear previous analysis
+
+        // Call analyze-reference API
+        try {
+          toast.info('正在分析参考图...', 'AI 正在识别参考图中的服装单品和配色');
+          const analyzeResponse = await fetch('/api/ai/analyze-reference', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl: base64 }),
+          });
+
+          if (analyzeResponse.ok) {
+            const analysisData = await analyzeResponse.json();
+            if (analysisData.success && analysisData.analysis) {
+              setReferenceAnalysis(analysisData.analysis);
+              toast.success('参考图分析完成', '已识别参考图中的服装单品和配色方案');
+            } else {
+              toast.success('参考图已上传', 'AI 将在搭配时参考此图片');
+            }
+          } else {
+            toast.success('参考图已上传', 'AI 将在搭配时参考此图片');
+          }
+        } catch (analyzeError) {
+          console.warn('[AI Styling] Reference analysis failed:', analyzeError);
+          toast.success('参考图已上传', 'AI 将在搭配时参考此图片');
+        }
       };
       reader.readAsDataURL(file);
     }

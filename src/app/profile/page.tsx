@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, Shirt, Sparkles, Settings, Shield, HelpCircle, LogOut, Heart, Calendar, Ruler, Moon, Bell, BellOff, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
 
 export default function ProfilePage() {
-  const { state, getStats } = useWardrobe();
+  const { state, getStats, updateUser } = useWardrobe();
   const user = state.user;
   const stats = getStats();
 
@@ -43,6 +43,17 @@ export default function ProfilePage() {
   // Settings state
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+
+  // Sync preferences to store for AI use
+  useEffect(() => {
+    updateUser({
+      preferences: {
+        styles: selectedStyles,
+        colors: selectedColors,
+        occasions: selectedOccasions,
+      },
+    });
+  }, [selectedStyles, selectedColors, selectedOccasions, updateUser]);
 
   const toggleStyle = (style: string) => {
     setSelectedStyles(prev =>
