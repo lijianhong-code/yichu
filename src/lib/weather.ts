@@ -1,7 +1,10 @@
 /**
  * Dynamic weather utility
  * Generates realistic weather data based on current date and season.
- * For production, replace with a real weather API (e.g., OpenWeatherMap, QWeather).
+ * Used as fallback when QWeather API key is not configured.
+ * 
+ * For production, configure QWEATHER_API_KEY environment variable
+ * to use real-time weather data from 和风天气 (QWeather).
  */
 
 export interface WeatherData {
@@ -11,6 +14,37 @@ export interface WeatherData {
   humidity: number;
   windSpeed: number;
   city: string;
+}
+
+/**
+ * 返回季节模拟天气数据（用于 API 降级）
+ * 格式与和风天气 API 返回保持一致
+ */
+export function getSeasonalWeather(city: string = '上海'): {
+  data: {
+    temp: string;
+    feelsLike: string;
+    text: string;
+    humidity: string;
+    windDir: string;
+    windScale: string;
+    windSpeed: string;
+  };
+  updateTime: string;
+} {
+  const weather = getCurrentWeather(city);
+  return {
+    data: {
+      temp: String(weather.temperature),
+      feelsLike: String(weather.feelsLike),
+      text: weather.condition,
+      humidity: String(weather.humidity),
+      windDir: '东南风',
+      windScale: '2',
+      windSpeed: String(weather.windSpeed),
+    },
+    updateTime: new Date().toISOString(),
+  };
 }
 
 // Seasonal temperature ranges for Shanghai (can be adjusted per city)

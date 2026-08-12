@@ -136,7 +136,29 @@ export default function AIStylingPage() {
     style_tags: string[];
     formality_level: string;
   } | null>(null);
+  const [weatherData, setWeatherData] = useState<{ temp: string; text: string; city: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch real-time weather on mount
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const city = user?.city || '上海';
+        const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+        const data = await res.json();
+        if (data.code === '200' && data.data) {
+          setWeatherData({
+            temp: data.data.temp,
+            text: data.data.text,
+            city: data.city || city,
+          });
+        }
+      } catch {
+        // Weather fetch failed silently, use fallback display
+      }
+    };
+    fetchWeather();
+  }, [user?.city]);
 
   const previewOutfit = candidates[previewCandidateIndex]?.outfit ?? { name: '', explanation: '', items: [] as WardrobeItem[] };
 
@@ -212,7 +234,7 @@ export default function AIStylingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userInput: inputValue,
-          weather: getCurrentWeather(user?.city || '上海'),
+          weather: weatherData ? { temperature: Number(weatherData.temp), condition: weatherData.text, feelsLike: Number(weatherData.temp) } : getCurrentWeather(user?.city || '上海'),
           referenceAnalysis: referenceAnalysis || undefined,
           preferences: userPreferences,
         }),
@@ -788,7 +810,7 @@ export default function AIStylingPage() {
             {/* Weather/Location floating tag - top right */}
             {(pageState !== 'empty' || canvasItems.length > 0) && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
-                <span>上海 · 22-28°C</span>
+                <span>{weatherData ? `${weatherData.city} · ${weatherData.temp}°C ${weatherData.text}` : '上海 · 22-28°C'}</span>
               </div>
             )}
             {/* Empty state illustration */}
