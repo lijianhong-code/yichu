@@ -816,7 +816,7 @@ export default function AIStylingPage() {
             {/* Empty state illustration */}
             {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
-                <img src="/empty-styling.jpeg" alt="" className="w-28 h-28 object-contain opacity-50 mb-4" />
+                <img src="/empty-styling.jpeg?v=2" alt="" className="w-28 h-28 object-contain opacity-50 mb-4" />
                 <p className="text-sm text-muted-foreground text-center">描述你的需求，AI 将为你智能搭配</p>
               </div>
             )}
