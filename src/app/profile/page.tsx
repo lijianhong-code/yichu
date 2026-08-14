@@ -27,6 +27,20 @@ export default function ProfilePage() {
   const user = state.user;
   const stats = getStats();
 
+  // 计算颜色分布
+  const colorDistribution = (() => {
+    const colorCount: Record<string, number> = {};
+    state.items.forEach((item) => {
+      const color = item.primaryColor || '未分类';
+      colorCount[color] = (colorCount[color] || 0) + 1;
+    });
+    const total = state.items.length;
+    return Object.entries(colorCount)
+      .map(([color, count]) => ({ color, count, percentage: Math.round((count / total) * 100) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6); // 只显示前 6 种颜色
+  })();
+
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
   const [isPreferenceSheetOpen, setIsPreferenceSheetOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
@@ -155,6 +169,42 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground mt-1">利用率</p>
           </Card>
         </div>
+      </div>
+
+      {/* Color Distribution Section */}
+      <div className="px-4 mt-6">
+        <Card className="overflow-hidden">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Shirt className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-medium text-foreground">衣橱颜色分布</h3>
+            </div>
+          </div>
+          <CardContent className="pt-4">
+            {colorDistribution.length > 0 ? (
+              <div className="space-y-3">
+                {colorDistribution.map((item) => (
+                  <div key={item.color}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm text-foreground">{item.color}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{item.count} 件 ({item.percentage}%)</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">暂无衣物数据</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* AI Insights Section */}

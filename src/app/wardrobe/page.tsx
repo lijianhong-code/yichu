@@ -17,6 +17,7 @@ import {
   Check,
   AlertTriangle,
   ChevronRight,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,10 +54,7 @@ import { OutfitCanvas } from '@/components/outfit-canvas';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   available: { label: '可用', color: 'bg-muted text-muted-foreground', icon: Shirt },
-  wearing: { label: '穿着中', color: 'bg-primary/10 text-primary', icon: Heart },
-  washing: { label: '洗衣中', color: 'bg-info-bg text-info', icon: Hand },
-  lent: { label: '已借出', color: 'bg-warning-bg text-warning', icon: Clock },
-  pending_review: { label: '待确认', color: 'bg-accent text-accent-foreground', icon: AlertTriangle },
+  archived: { label: '归档', color: 'bg-muted/50 text-muted-foreground/50', icon: Archive },
 };
 
 export default function WardrobePage() {
@@ -151,7 +149,7 @@ export default function WardrobePage() {
         occasions: ['日常'],
         style: ['简约'],
         material: '棉',
-        status: 'pending_review' as ClothingItem['status'],
+        status: 'available' as ClothingItem['status'],
         imageUrl: URL.createObjectURL(file),
         description: '新上传的衣物',
         wearCount: 0,

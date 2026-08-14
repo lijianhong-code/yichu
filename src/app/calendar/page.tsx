@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil, Calendar as CalendarIcon, Check, Edit, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Card, CardContent } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWardrobe } from '@/lib/store';
+import { Outfit } from '@/lib/mock-data';
 import { toast } from '@/lib/toast';
 
 // Weather icons
@@ -72,6 +73,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(formatDateStr(now.getFullYear(), now.getMonth(), now.getDate()));
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
+  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   
   // Swipe gesture state
   const touchStartX = useRef<number | null>(null);
@@ -145,6 +147,18 @@ export default function CalendarPage() {
 
   const handleRecord = () => {
     setIsRecordSheetOpen(true);
+  };
+
+  const handleRecordOutfit = (outfit: Outfit) => {
+    addRecord({
+      id: `record-${Date.now()}`,
+      date: selectedDate,
+      outfitId: outfit.id,
+      outfit: outfit,
+      weather: '晴',
+      note: '',
+    });
+    toast.success('已记录到日历');
   };
 
   const handleGoToStyling = () => {
@@ -251,7 +265,9 @@ export default function CalendarPage() {
               return (
                 <button
                   key={day.dateStr}
-                  onClick={() => setSelectedDate(day.dateStr)}
+                  onClick={() => {
+                    setSelectedDate(day.dateStr);
+                  }}
                   className={`flex flex-col items-center py-3 px-1 rounded-lg transition-all relative ${
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm'

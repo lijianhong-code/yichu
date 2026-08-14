@@ -14,7 +14,7 @@ export interface WardrobeItem {
   pattern?: string;
   brand?: string;
   description?: string;
-  status: 'available' | 'washing' | 'lent' | 'pending_review';
+  status: 'available' | 'archived';
   wearCount: number;
   lastWorn?: string;
   imageUrl: string;
