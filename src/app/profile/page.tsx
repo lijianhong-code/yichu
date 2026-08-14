@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
 
@@ -39,6 +40,19 @@ export default function ProfilePage() {
       .map(([color, count]) => ({ color, count, percentage: Math.round((count / total) * 100) }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6); // 只显示前 6 种颜色
+  })();
+
+  // 计算分类分布
+  const categoryDistribution = (() => {
+    const categoryCount: Record<string, number> = {};
+    state.items.forEach((item) => {
+      const category = item.category || '未分类';
+      categoryCount[category] = (categoryCount[category] || 0) + 1;
+    });
+    const total = state.items.length;
+    return Object.entries(categoryCount)
+      .map(([category, count]) => ({ category, count, percentage: Math.round((count / total) * 100) }))
+      .sort((a, b) => b.count - a.count);
   })();
 
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
@@ -155,7 +169,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mt-4">
+        <div className="grid grid-cols-2 gap-3 mt-4">
           <Card className="text-center p-3">
             <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalItems}</p>
             <p className="text-xs text-muted-foreground mt-1">衣物</p>
@@ -164,39 +178,139 @@ export default function ProfilePage() {
             <p className="text-2xl font-semibold text-foreground tabular-nums">{stats.totalOutfits}</p>
             <p className="text-xs text-muted-foreground mt-1">搭配</p>
           </Card>
-          <Card className="text-center p-3">
-            <p className="text-2xl font-semibold text-primary tabular-nums">{stats.utilizationRate}%</p>
-            <p className="text-xs text-muted-foreground mt-1">利用率</p>
-          </Card>
         </div>
       </div>
 
-      {/* Color Distribution Section */}
+      {/* Category Distribution Pie Chart */}
       <div className="px-4 mt-6">
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <Shirt className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-medium text-foreground">衣橱颜色分布</h3>
+              <h3 className="text-sm font-medium text-foreground">衣橱分类分布</h3>
+            </div>
+          </div>
+          <CardContent className="pt-4">
+            {categoryDistribution.length > 0 ? (
+              <div className="flex items-center gap-6">
+                <div className="w-32 h-32 relative">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    {categoryDistribution.reduce<{ elements: React.ReactElement[]; offset: number }>(
+                      (acc, item, index) => {
+                        const colors = ['#2F6B57', '#D9684D', '#C5912F', '#4B7698', '#7B708C', '#8B9D83'];
+                        const color = colors[index % colors.length];
+                        const circumference = 2 * Math.PI * 40;
+                        const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
+                        const strokeDashoffset = -(acc.offset / 100) * circumference;
+                        acc.elements.push(
+                          <circle
+                            key={item.category}
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="20"
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                          />
+                        );
+                        acc.offset += item.percentage;
+                        return acc;
+                      },
+                      { elements: [], offset: 0 }
+                    ).elements}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-xl font-semibold text-foreground tabular-nums">{stats.totalItems}</p>
+                      <p className="text-xs text-muted-foreground">总衣物</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {categoryDistribution.slice(0, 5).map((item, index) => {
+                    const colors = ['#2F6B57', '#D9684D', '#C5912F', '#4B7698', '#7B708C', '#8B9D83'];
+                    const color = colors[index % colors.length];
+                    return (
+                      <div key={item.category} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-sm text-foreground flex-1">{item.category}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{item.count} 件</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">暂无衣物数据</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Color Distribution Pie Chart */}
+      <div className="px-4 mt-6">
+        <Card className="overflow-hidden">
+          <div className="bg-gradient-to-r from-accent/50 to-accent-muted/50 px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-accent-foreground" />
+              <h3 className="text-sm font-medium text-foreground">颜色分布</h3>
             </div>
           </div>
           <CardContent className="pt-4">
             {colorDistribution.length > 0 ? (
-              <div className="space-y-3">
-                {colorDistribution.map((item) => (
-                  <div key={item.color}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm text-foreground">{item.color}</span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{item.count} 件 ({item.percentage}%)</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-300"
-                        style={{ width: `${item.percentage}%` }}
-                      />
+              <div className="flex items-center gap-6">
+                <div className="w-32 h-32 relative">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    {colorDistribution.reduce<{ elements: React.ReactElement[]; offset: number }>(
+                      (acc, item, index) => {
+                        const colors = ['#2F6B57', '#D9684D', '#C5912F', '#4B7698', '#7B708C', '#8B9D83'];
+                        const color = colors[index % colors.length];
+                        const circumference = 2 * Math.PI * 40;
+                        const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
+                        const strokeDashoffset = -(acc.offset / 100) * circumference;
+                        acc.elements.push(
+                          <circle
+                            key={item.color}
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="20"
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                          />
+                        );
+                        acc.offset += item.percentage;
+                        return acc;
+                      },
+                      { elements: [], offset: 0 }
+                    ).elements}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-xl font-semibold text-foreground tabular-nums">{colorDistribution.length}</p>
+                      <p className="text-xs text-muted-foreground">颜色数</p>
                     </div>
                   </div>
-                ))}
+                </div>
+                <div className="flex-1 space-y-2">
+                  {colorDistribution.map((item, index) => {
+                    const colors = ['#2F6B57', '#D9684D', '#C5912F', '#4B7698', '#7B708C', '#8B9D83'];
+                    const color = colors[index % colors.length];
+                    return (
+                      <div key={item.color} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-sm text-foreground flex-1">{item.color}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{item.count} 件 ({item.percentage}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
