@@ -794,7 +794,7 @@ export default function AIStylingPage() {
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
         <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: trayOpen ? '40%' : (pageState === 'editing' ? '75%' : '100%'), minHeight: '200px' }}>
+          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: trayOpen ? '55%' : (pageState === 'editing' ? '75%' : '100%'), minHeight: '220px' }}>
             {/* Weather/Location floating tag - top right */}
             {(pageState !== 'empty' || canvasItems.length > 0) && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
@@ -1143,58 +1143,19 @@ export default function AIStylingPage() {
               </div>
             )}
 
-            {/* Canvas Toolbar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              {canvasItems.length > 0 && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 rounded-lg text-xs shrink-0"
-                        onClick={handleAIComplete}
-                        disabled={isAICompleting || canvasItems.length === 0}
-                      >
-                        {isAICompleting ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin text-ai-400" />
-                        ) : (
-                          <SparklesIcon className="h-3.5 w-3.5 mr-1 text-ai-400" />
-                        )}
-                        {isAICompleting ? 'AI 思考中...' : 'AI 补全'}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>AI 补充缺失槽位</TooltipContent>
-                  </Tooltip>
-
-                  {/* Undo AI Complete button - shows after AI complete */}
-                  {showAICompleteResults && aiCompleteResults.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 rounded-lg text-xs shrink-0 text-muted-foreground"
-                      onClick={handleUndoAIComplete}
-                    >
-                      <Undo2 className="h-3.5 w-3.5 mr-1" />
-                      撤销补全
-                    </Button>
-                  )}
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 rounded-lg text-xs shrink-0"
-                        onClick={handleRestoreLayout}
-                      >
-                        <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                        恢复排版
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>恢复系统自动布局</TooltipContent>
-                  </Tooltip>
-                </>
+            {/* Canvas Toolbar - only show undo AI complete and save button */}
+            <div className="flex items-center gap-2">
+              {/* Undo AI Complete button - shows after AI complete */}
+              {showAICompleteResults && aiCompleteResults.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 rounded-lg text-xs shrink-0 text-muted-foreground"
+                  onClick={handleUndoAIComplete}
+                >
+                  <Undo2 className="h-3.5 w-3.5 mr-1" />
+                  撤销补全
+                </Button>
               )}
             </div>
 
