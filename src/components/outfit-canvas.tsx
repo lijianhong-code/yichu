@@ -11,7 +11,6 @@ import {
   Undo2,
   Redo2,
   Plus,
-  Move,
   Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -806,24 +805,8 @@ export function OutfitCanvas({
             )}
           </div>
 
-          {/* Center: Layout tools */}
+          {/* Center: Undo/Redo */}
           <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={restoreLayout}
-                >
-                  <Move className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>恢复排版</TooltipContent>
-            </Tooltip>
-
-            <div className="w-px h-5 bg-neutral-200 mx-1" />
-
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
