@@ -794,7 +794,7 @@ export default function AIStylingPage() {
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
         <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          <div className={`rounded-2xl outfit-stage noise-texture relative overflow-hidden transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: trayOpen ? '55%' : (pageState === 'editing' ? '75%' : '100%'), minHeight: '220px' }}>
+          <div className={`rounded-2xl outfit-stage noise-texture relative transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: trayOpen ? '65%' : (pageState === 'editing' ? '80%' : '100%'), minHeight: '280px' }}>
             {/* Weather/Location floating tag - top right */}
             {(pageState !== 'empty' || canvasItems.length > 0) && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
