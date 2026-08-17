@@ -794,7 +794,7 @@ export default function AIStylingPage() {
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
         <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          <div className={`rounded-2xl outfit-stage noise-texture relative transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ height: trayOpen ? '65%' : (pageState === 'editing' ? '80%' : '100%'), minHeight: '280px' }}>
+          <div className={`rounded-2xl outfit-stage noise-texture relative transition-all duration-300 flex flex-col ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ flex: '1 1 0%', minHeight: '200px' }}>
             {/* Weather/Location floating tag - top right */}
             {(pageState !== 'empty' || canvasItems.length > 0) && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
@@ -809,23 +809,6 @@ export default function AIStylingPage() {
               </div>
             )}
 
-            {/* CANVAS - Always visible */}
-            <OutfitCanvas
-              initialItems={pageState === 'editing' ? canvasItems : pageState === 'preview' ? (candidates[previewCandidateIndex]?.outfit.items || []).map((item, idx) => {
-                const totalItems = (candidates[previewCandidateIndex]?.outfit.items || []).length;
-                const cols = Math.min(3, totalItems);
-                const row = Math.floor(idx / cols);
-                const col = idx % cols;
-                return { id: `${item.id}-${idx}`, itemId: item.id, item, x: 15 + col * 28, y: 10 + row * 35, scale: 1, locked: false, zIndex: idx };
-              }) : []}
-              editable={pageState === 'editing' || canvasItems.length > 0}
-              onSave={(items) => {
-                setCanvasItems(items);
-                pushEditHistory(items);
-              }}
-              onAddFromWardrobe={() => setTrayOpen(true)}
-            />
-            
             {/* OVERLAY: Loading state */}
             {pageState === 'loading' && (
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center py-8 px-6 z-10">
@@ -873,6 +856,23 @@ export default function AIStylingPage() {
                 </div>
               </div>
             )}
+            {/* CANVAS - flex-1 so toolbar below is always visible */}
+            <OutfitCanvas
+              initialItems={pageState === 'editing' ? canvasItems : pageState === 'preview' ? (candidates[previewCandidateIndex]?.outfit.items || []).map((item, idx) => {
+                const totalItems = (candidates[previewCandidateIndex]?.outfit.items || []).length;
+                const cols = Math.min(3, totalItems);
+                const row = Math.floor(idx / cols);
+                const col = idx % cols;
+                return { id: `${item.id}-${idx}`, itemId: item.id, item, x: 15 + col * 28, y: 10 + row * 35, scale: 1, locked: false, zIndex: idx };
+              }) : []}
+              editable={pageState === 'editing' || canvasItems.length > 0}
+              onSave={(items) => {
+                setCanvasItems(items);
+                pushEditHistory(items);
+              }}
+              onAddFromWardrobe={() => setTrayOpen(true)}
+              className="flex-1 min-h-0"
+            />
           </div>
           {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
           {(pageState === 'editing' || trayOpen) && (

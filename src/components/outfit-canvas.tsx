@@ -571,15 +571,13 @@ export function OutfitCanvas({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn("flex flex-col gap-2 min-h-0", className)}>
       {/* Canvas Area */}
       <div
         ref={canvasRef}
-        className="relative w-full overflow-hidden rounded-lg select-none"
+        className="relative w-full overflow-hidden rounded-lg select-none flex-1 min-h-0"
         style={{
-          aspectRatio: "3/4",
           backgroundColor: "var(--color-neutral-75, #ECEFEB)",
-          maxHeight: "62vh",
         }}
         onMouseDown={handleCanvasMouseDown}
         onTouchStart={handleCanvasTouchStart}
@@ -723,7 +721,7 @@ export function OutfitCanvas({
 
       {/* Toolbar (only in edit mode) */}
       {editable && (
-        <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center justify-between gap-2 px-1 shrink-0">
           {/* Left: Main tools */}
           <div className="flex items-center gap-1">
             <Tooltip>
