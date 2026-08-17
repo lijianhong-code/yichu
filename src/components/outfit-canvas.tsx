@@ -3,10 +3,7 @@
 import * as React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
-  Lock,
-  Unlock,
   RotateCcw,
-  Maximize2,
   Trash2,
   Undo2,
   Redo2,
@@ -671,15 +668,8 @@ export function OutfitCanvas({
                 />
               </div>
 
-              {/* Lock Icon */}
-              {item.locked && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center shadow-sm">
-                  <Lock className="w-3 h-3 text-white" />
-                </div>
-              )}
-
               {/* AI Suggested Badge */}
-              {item.isAISuggested && !item.locked && (
+              {item.isAISuggested && (
                 <div className="absolute -top-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-ai-50 text-ai-600">
                   AI
                 </div>
@@ -752,40 +742,6 @@ export function OutfitCanvas({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>替换</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      onClick={() => toggleLock(selectedItem.id)}
-                    >
-                      {selectedItem.locked ? (
-                        <Unlock className="w-4 h-4" />
-                      ) : (
-                        <Lock className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {selectedItem.locked ? "解锁" : "锁定"}
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      onClick={() => restoreSize(selectedItem.id)}
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>恢复大小</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
