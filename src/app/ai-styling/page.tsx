@@ -29,7 +29,6 @@ import {
   Sun,
   ClipboardList,
   Loader2,
-  Star,
   XCircle,
   Share2,
   Save,
@@ -107,7 +106,6 @@ export default function AIStylingPage() {
   const [selectedItem, setSelectedItem] = useState<CanvasItem | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showWhy, setShowWhy] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
@@ -765,16 +763,6 @@ export default function AIStylingPage() {
     toast.success('已加载历史搭配', record.date);
   };
 
-  // Calculate outfit rating
-  const calculateRating = () => {
-    if (!previewOutfit.items.length) return 0;
-    // Simple rating based on item count and variety
-    const categories = new Set(previewOutfit.items.map(i => i.category));
-    const varietyScore = Math.min(categories.size / 4, 1) * 2;
-    const completenessScore = Math.min(previewOutfit.items.length / 3, 1) * 3;
-    return Math.round((varietyScore + completenessScore) * 10) / 10;
-  };
-
   return (
     <TooltipProvider>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -1062,39 +1050,12 @@ export default function AIStylingPage() {
                 </button>
               ))}
             </div>
-
-            {/* AI Rating & Explanation Card */}
+            {/* 推荐理由 */}
             <div className="rounded-2xl bg-muted/30 border border-border/30 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`h-4 w-4 ${
-                        star <= Math.round(calculateRating() / 2)
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-muted-foreground/30'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">AI 推荐指数 {calculateRating().toFixed(1)}</span>
-              </div>
-
               <div className="flex items-start gap-2">
                 <Sparkles className="h-4 w-4 text-ai-400 mt-0.5 shrink-0" />
                 <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
               </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWhy(true)}
-                className="h-auto px-0 py-0 text-xs text-muted-foreground hover:text-primary hover:bg-transparent transition-colors"
-              >
-                查看推荐理由
-                <ChevronRight className="h-3 w-3 ml-1" />
-              </Button>
             </div>
 
             {/* Main actions */}
@@ -1334,56 +1295,6 @@ export default function AIStylingPage() {
         </Dialog>
 
         {/* ==================== SHEETS ==================== */}
-
-        {/* Why Sheet */}
-        <Sheet open={showWhy} onOpenChange={setShowWhy}>
-          <SheetContent className="sm:max-w-lg">
-            <SheetHeader>
-              <SheetTitle>推荐理由</SheetTitle>
-              <SheetDescription>AI 搭配的关键考量</SheetDescription>
-            </SheetHeader>
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="space-y-4 py-4">
-                {/* Show actual AI explanation */}
-                {previewOutfit.explanation && (
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-sm text-foreground leading-relaxed">{previewOutfit.explanation}</p>
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Check className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">场合匹配</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {previewOutfit.explanation ? '根据你描述的需求进行匹配' : '根据日常场景进行搭配'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Check className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">温度适宜</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">根据当前天气选择合适的厚度</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-ai-50 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-4 w-4 text-ai-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">色彩协调</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">AI 分析了单品的色彩搭配关系</p>
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </SheetContent>
-        </Sheet>
-
         {/* History Sheet */}
         <Sheet open={showHistory} onOpenChange={setShowHistory}>
           <SheetContent className="sm:max-w-lg">
