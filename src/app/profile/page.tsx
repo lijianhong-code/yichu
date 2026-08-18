@@ -412,7 +412,7 @@ export default function ProfilePage() {
                   <div className="w-12 h-12 rounded-md bg-card overflow-hidden flex-shrink-0">
                     {record.outfit.items[0] && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={record.outfit.items[0].imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                      <img src={record.outfit.items[0].imageUrl} alt={record.outfit.items[0].name || '穿搭记录'} className="w-full h-full object-contain p-1" loading="lazy" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

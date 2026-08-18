@@ -187,6 +187,7 @@ export default function WardrobePage() {
               variant="ghost"
               size="icon"
               onClick={() => setShowSearch(!showSearch)}
+              aria-label={showSearch ? '关闭搜索' : '打开搜索'}
               className={`rounded-xl ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
             >
               {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
@@ -234,7 +235,7 @@ export default function WardrobePage() {
                   <Badge
                     key={cat.key}
                     variant={activeCategory === cat.key ? 'default' : 'outline'}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap cursor-pointer shrink-0"
+                    className="flex items-center gap-1 px-3 min-h-[36px] py-1.5 rounded-full text-sm whitespace-nowrap cursor-pointer shrink-0"
                     onClick={() => setActiveCategory(cat.key)}
                   >
                     {cat.label}
@@ -791,7 +792,7 @@ export default function WardrobePage() {
                     <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
                       <div className="w-10 h-10 rounded-md bg-card overflow-hidden flex-shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-1" loading="lazy" />
+                        <img src={item.imageUrl} alt={item.name || '衣物图片'} className="w-full h-full object-contain p-1" loading="lazy" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{item.name}</p>

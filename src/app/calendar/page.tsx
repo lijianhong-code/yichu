@@ -232,13 +232,13 @@ export default function CalendarPage() {
       >
         {/* Month Navigation */}
         <div className="py-3 flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+          <Button variant="ghost" size="icon" onClick={handlePrevMonth} aria-label="上一个月">
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <h2 className="text-base font-medium text-foreground">
             {currentYear}年{currentMonth + 1}月
           </h2>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+          <Button variant="ghost" size="icon" onClick={handleNextMonth} aria-label="下一个月">
             <ChevronRight className="w-5 h-5" />
           </Button>
         </div>

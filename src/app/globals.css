@@ -45,7 +45,7 @@
   --color-background: #F7F8F6;
   --color-foreground: #181C1A;
   --color-muted: #ECEFEB;
-  --color-muted-foreground: #5D665F;
+  --color-muted-foreground: #4F5751;
   --color-card: #FFFFFF;
   --color-card-foreground: #181C1A;
   --color-border: #DDE2DD;
@@ -158,6 +158,21 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+ * 减少动效偏好（WCAG 2.1 AA）
+ * ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ========================================

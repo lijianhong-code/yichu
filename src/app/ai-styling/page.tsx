@@ -1094,6 +1094,7 @@ export default function AIStylingPage() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="或输入需求..."
+                  aria-label="搭配需求描述"
                   className="flex-1 h-full px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && inputValue.trim()) {
