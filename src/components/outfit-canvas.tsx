@@ -136,9 +136,6 @@ export function OutfitCanvas({
   const selectedItem = items.find((i) => i.id === selectedId)
   const canUndo = historyIndex > 0
   const canRedo = historyIndex < history.length - 1
-  const hasCompleteOutfit = items.some(
-    (i) => ["上装", "下装", "连体", "外套"].includes(i.item.category)
-  )
 
   // ─── History Management ──────────────────────────────────────────────────
 
@@ -792,31 +789,6 @@ export function OutfitCanvas({
               </TooltipTrigger>
               <TooltipContent>重做</TooltipContent>
             </Tooltip>
-          </div>
-
-          {/* Right: AI Complete */}
-          <div className="flex items-center gap-1">
-            {hasCompleteOutfit && onAIComplete && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 gap-1.5 text-ai-600"
-                    onClick={() => {
-                      const lockedIds = items
-                        .filter((i) => i.locked)
-                        .map((i) => i.itemId)
-                      onAIComplete(lockedIds)
-                    }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">AI 补全</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>AI 补全缺失槽位</TooltipContent>
-              </Tooltip>
-            )}
           </div>
         </div>
       )}

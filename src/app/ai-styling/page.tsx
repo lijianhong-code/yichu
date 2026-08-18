@@ -9,32 +9,25 @@ import {
   ChevronRight,
   RefreshCw,
   Check,
-  Lock,
-  Unlock,
   History,
   MoreHorizontal,
-  ImageIcon,
-  Plus,
   Pencil,
-  Sparkles as SparklesIcon,
   X,
   Undo2,
   Redo2,
-  RotateCcw,
-  BookmarkPlus,
   Trash2,
-  MoveHorizontal,
   Briefcase,
   Wine,
   Sun,
   ClipboardList,
-  Loader2,
   XCircle,
   Share2,
   Save,
+  Camera,
+  Wand2,
+  Shuffle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -322,6 +315,144 @@ export default function AIStylingPage() {
     }
   };
 
+  // One-click recommendation (zero input, auto-generate based on weather + preferences)
+  const handleQuickRecommend = async () => {
+    const weatherDesc = weatherData ? `${weatherData.city} ${weatherData.temp}°C ${weatherData.text}` : '当前天气';
+    const autoInput = `根据今天天气(${weatherDesc})推荐一套日常穿搭`;
+    setInputValue(autoInput);
+    // Trigger generate with the auto input
+    setTimeout(() => {
+      handleGenerateWithInput(autoInput);
+    }, 0);
+  };
+
+  // Scene tag quick generate
+  const handleSceneClick = (label: string) => {
+    setInputValue(label);
+    setTimeout(() => {
+      handleGenerateWithInput(label);
+    }, 0);
+  };
+
+  // Generate with explicit input (bypasses the inputValue check)
+  const handleGenerateWithInput = async (input: string) => {
+    if (!input.trim()) return;
+    setPageState('loading');
+    setCurrentStage(0);
+    setProgress(0);
+    setPreviewCandidateIndex(0);
+    setAiError(null);
+
+    try {
+      const userPreferences = user?.preferences ? {
+        style: user.preferences.styles,
+        colors: user.preferences.colors,
+        avoid_colors: user.preferences.avoidColors,
+      } : undefined;
+
+      const response = await fetch('/api/ai/styling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userInput: input,
+          weather: weatherData ? { temperature: Number(weatherData.temp), condition: weatherData.text, feelsLike: Number(weatherData.temp) } : getCurrentWeather(user?.city || '上海'),
+          referenceAnalysis: referenceAnalysis || undefined,
+          preferences: userPreferences,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI 服务返回 ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('无法读取响应流');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalData: {
+        success: boolean;
+        status: string;
+        candidates: Array<{
+          id: string;
+          label: string;
+          outfit: { name: string; explanation: string; items: WardrobeItem[] };
+        }>;
+      } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.stage !== undefined) {
+                setCurrentStage(data.stage);
+                setProgress(Math.min(90, (data.stage + 1) * 25));
+              }
+              if (data.success !== undefined) {
+                finalData = data;
+              }
+              if (data.message && data.stage === undefined) {
+                throw new Error(data.message);
+              }
+            } catch (e) {
+              if (e instanceof Error && e.message !== '无法读取响应流') {
+                if (e instanceof SyntaxError) continue;
+                throw e;
+              }
+            }
+          }
+        }
+      }
+
+      if (finalData && finalData.success && finalData.candidates?.length > 0) {
+        const apiCandidates: CandidateOutfit[] = finalData.candidates.map((c) => ({
+          id: c.id,
+          label: c.label,
+          outfit: {
+            name: c.outfit.name,
+            explanation: c.outfit.explanation,
+            items: c.outfit.items,
+          },
+        }));
+
+        setCandidates(apiCandidates);
+        setProgress(100);
+        setPageState('preview');
+      } else {
+        throw new Error('AI 未能生成搭配方案');
+      }
+    } catch (error) {
+      console.error('[AI Styling] Error:', error);
+      setAiError(error instanceof Error ? error.message : 'AI 搭配生成失败，请重试');
+      setPageState('empty');
+    }
+  };
+
+  // "换一套" - shuffle to next candidate
+  const handleShuffleOutfit = () => {
+    if (candidates.length <= 1) {
+      // Only one candidate, regenerate
+      handleGenerateWithInput(inputValue || '换一套搭配');
+      return;
+    }
+    const nextIndex = (previewCandidateIndex + 1) % candidates.length;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setPreviewCandidateIndex(nextIndex);
+      setIsTransitioning(false);
+    }, 150);
+  };
+
   // Cancel loading
   const handleCancelLoading = () => {
     setShowCancelDialog(true);
@@ -417,15 +548,6 @@ export default function AIStylingPage() {
     setCanvasItems(newItems);
     pushEditHistory(newItems);
     setSelectedItem(null);
-  };
-
-  // Toggle lock on item
-  const handleToggleLock = (itemId: string) => {
-    const newItems = canvasItems.map((ci) =>
-      ci.itemId === itemId ? { ...ci, locked: !ci.locked } : ci
-    );
-    setCanvasItems(newItems);
-    pushEditHistory(newItems);
   };
 
   // AI Complete missing slots
@@ -586,34 +708,6 @@ export default function AIStylingPage() {
     toast.success('已保存搭配', outfitData.name);
   };
 
-  // Restore layout
-  const handleRestoreLayout = () => {
-    const newItems = canvasItems.map((ci, index) => {
-      const totalItems = canvasItems.length;
-      const cols = Math.min(3, totalItems);
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      return {
-        ...ci,
-        x: 20 + col * 30,
-        y: 15 + row * 35,
-      };
-    });
-    setCanvasItems(newItems);
-    pushEditHistory(newItems);
-  };
-
-  // Restore size
-  const handleRestoreSize = () => {
-    if (!selectedItem) return;
-    const newItems = canvasItems.map((ci) =>
-      ci.id === selectedItem.id ? { ...ci, scale: 1 } : ci
-    );
-    setCanvasItems(newItems);
-    pushEditHistory(newItems);
-    setSelectedItem({ ...selectedItem, scale: 1 });
-  };
-
   // Handle reference image upload
   const handleReferenceImageClick = () => {
     fileInputRef.current?.click();
@@ -641,7 +735,54 @@ export default function AIStylingPage() {
             const analysisData = await analyzeResponse.json();
             if (analysisData.success && analysisData.analysis) {
               setReferenceAnalysis(analysisData.analysis);
-              toast.success('参考图分析完成', '已识别参考图中的服装单品和配色方案');
+              
+              // Auto-trigger recreate: generate outfit from reference image
+              toast.info('正在复现搭配...', 'AI 正在从你的衣橱中匹配相似单品');
+              setPageState('loading');
+              setCurrentStage(0);
+              setProgress(0);
+              setPreviewCandidateIndex(0);
+              setAiError(null);
+
+              try {
+                const recreateResponse = await fetch('/api/ai/recreate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    referenceAnalysis: analysisData.analysis,
+                    wardrobe: state.items.filter((i: WardrobeItem) => i.status === 'available'),
+                    weather: weatherData ? { temperature: Number(weatherData.temp), condition: weatherData.text, feelsLike: Number(weatherData.temp) } : getCurrentWeather(user?.city || '上海'),
+                  }),
+                });
+
+                if (recreateResponse.ok) {
+                  const recreateData = await recreateResponse.json();
+                  if (recreateData.success && recreateData.candidates?.length > 0) {
+                    const apiCandidates: CandidateOutfit[] = recreateData.candidates.map((c: { id: string; label: string; outfit: { name: string; explanation: string; items: WardrobeItem[] } }) => ({
+                      id: c.id,
+                      label: c.label,
+                      outfit: {
+                        name: c.outfit.name,
+                        explanation: c.outfit.explanation,
+                        items: c.outfit.items,
+                      },
+                    }));
+                    setCandidates(apiCandidates);
+                    setProgress(100);
+                    setPageState('preview');
+                    toast.success('复现完成', `已找到 ${apiCandidates.length} 套相似搭配`);
+                  } else {
+                    throw new Error('AI 未能生成复现方案');
+                  }
+                } else {
+                  throw new Error(`复现服务返回 ${recreateResponse.status}`);
+                }
+              } catch (recreateError) {
+                console.error('[AI Styling] Recreate failed:', recreateError);
+                // Fallback: use analysis result with styling API
+                setInputValue('根据参考图风格搭配');
+                handleGenerateWithInput('根据参考图风格搭配');
+              }
             } else {
               toast.success('参考图已上传', 'AI 将在搭配时参考此图片');
             }
@@ -871,7 +1012,6 @@ export default function AIStylingPage() {
                 pushEditHistory(items);
               }}
               onAddFromWardrobe={() => setTrayOpen(true)}
-              onAIComplete={() => handleAIComplete()}
               className="flex-1 min-h-0"
             />
           </div>
@@ -888,9 +1028,9 @@ export default function AIStylingPage() {
           )}
         </div>
         
-        {/* EMPTY STATE Actions - only show AI input when truly empty (no canvas items) */}
+        {/* EMPTY STATE Actions - Three entry points: Quick Recommend / Scene Tags / Reference Image */}
         {pageState === 'empty' && canvasItems.length === 0 && (
-          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2.5 border-t border-border/20 bg-background/80 backdrop-blur-sm">
             {/* AI error message */}
             {aiError && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
@@ -901,76 +1041,76 @@ export default function AIStylingPage() {
                 </Button>
               </div>
             )}
-            
-            {/* AI input area - OpenAI style */}
-            <div className="relative rounded-xl bg-muted/20 border border-border/30 overflow-hidden">
-              <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="描述你的需求，如：明天去客户公司，正式但不要太老气..."
-                className="min-h-[60px] max-h-[120px] pr-12 bg-transparent border-none rounded-none text-sm resize-none placeholder:text-muted-foreground/40 focus-visible:ring-0 transition-all"
-                style={{ height: 'auto' }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                }}
+
+            {/* Primary action: One-click recommend */}
+            <Button
+              className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
+              onClick={handleQuickRecommend}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              一键推荐今日穿搭
+            </Button>
+
+            {/* Scene tags - quick generate */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+              {(quickScenarios || []).map((scenario) => (
+                <Button
+                  key={scenario.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSceneClick(scenario.label)}
+                  className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/30 hover:bg-primary/5 gap-1.5 shrink-0 transition-all"
+                >
+                  {iconMap[scenario.icon] || null}
+                  {scenario.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Secondary actions row: Reference image + Text input */}
+            <div className="flex items-center gap-2">
+              {/* Reference image upload */}
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-10 px-3 rounded-lg text-xs gap-1.5 shrink-0 transition-all ${referenceImage ? 'text-primary border-primary/30 bg-primary/5' : 'text-muted-foreground border-border/50 hover:border-border'}`}
+                onClick={handleReferenceImageClick}
+              >
+                <Camera className="h-4 w-4" />
+                {referenceImage ? '已添加' : '参考图'}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
               />
-              {/* Action bar below input */}
-              <div className="flex items-center justify-between px-2 pb-2 pt-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 px-2.5 rounded-full text-xs gap-1 ${referenceImage ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
-                    onClick={handleReferenceImageClick}
-                  >
-                    <ImageIcon className="h-3.5 w-3.5" />
-                    {referenceImage ? '已添加' : '参考图'}
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                  <div className="h-3.5 w-px bg-border/40" />
-                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-                    {(quickScenarios || []).map((scenario) => (
-                      <Button
-                        key={scenario.label}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setInputValue(scenario.label)}
-                        className="h-8 px-2.5 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 gap-1 shrink-0"
-                      >
-                        {iconMap[scenario.icon] || null}
-                        {scenario.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+
+              {/* Text input - compact */}
+              <div className="flex-1 flex items-center h-10 rounded-lg bg-muted/20 border border-border/30 overflow-hidden">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="或输入需求..."
+                  className="flex-1 h-full px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && inputValue.trim()) {
+                      handleGenerate();
+                    }
+                  }}
+                />
                 <Button
                   size="icon"
-                  className="h-9 w-9 rounded-lg bg-primary hover:bg-primary/90 shadow-sm shrink-0"
+                  className="h-8 w-8 mr-1 rounded-md bg-primary hover:bg-primary/90 shrink-0"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
-
-            {/* Manual styling entry - directly enter editing state with tray open */}
-            <Button
-              variant="outline"
-              className="w-full h-10 rounded-lg text-sm border-border/60 hover:bg-muted/40"
-              onClick={() => { setPageState('editing'); setTrayOpen(true); }}
-            >
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              手动搭配
-            </Button>
           </div>
         )}
 
@@ -1008,72 +1148,38 @@ export default function AIStylingPage() {
           </div>
         )}
 
-        {/* PREVIEW STATE ACTIONS - Card-based display */}
+        {/* PREVIEW STATE ACTIONS - Simplified: 1 outfit + shuffle + one-line reason */}
         {pageState === 'preview' && (
           <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
-            {/* Candidate cards - horizontal scroll */}
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {(candidates || []).map((candidate, index) => (
-                <button
-                  key={candidate.id}
-                  onClick={() => {
-                    setIsTransitioning(true);
-                    setTimeout(() => {
-                      setPreviewCandidateIndex(index);
-                      setIsTransitioning(false);
-                    }, 150);
-                  }}
-                  className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all duration-200 hover:shadow-md card-interactive shrink-0 min-w-[140px] ${
-                    index === previewCandidateIndex
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                      : 'border-border/30 bg-background/60'
-                  }`}
-                >
-                  <div className="flex -space-x-1.5">
-                    {(candidate.outfit.items || []).slice(0, 3).map((item, idx) => (
-                      item ? (
-                        <div key={item.id || idx} className="h-9 w-9 rounded-full bg-muted overflow-hidden border-2 border-background">
-                          <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
-                  <div className="text-left">
-                    <span className={`text-sm font-medium block ${
-                      index === previewCandidateIndex ? 'text-primary' : 'text-foreground'
-                    }`}>
-                      {candidate.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {candidate.outfit.items?.length || 0} 件单品
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {/* 推荐理由 */}
-            <div className="rounded-2xl bg-muted/30 border border-border/30 p-4 space-y-3">
-              <div className="flex items-start gap-2">
-                <Sparkles className="h-4 w-4 text-ai-400 mt-0.5 shrink-0" />
-                <p className="text-sm text-foreground leading-relaxed flex-1">{previewOutfit.explanation}</p>
-              </div>
+            {/* One-line reason */}
+            <div className="flex items-start gap-2 rounded-xl bg-muted/20 border border-border/20 px-3 py-2.5">
+              <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-foreground leading-relaxed flex-1 line-clamp-2">{previewOutfit.explanation}</p>
             </div>
 
             {/* Main actions */}
-            <div className="flex gap-3">
-              <Button className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm btn-primary-glow transition-all" onClick={handleWearToday}>
+            <div className="flex gap-2.5">
+              <Button className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all" onClick={handleWearToday}>
                 <Check className="h-4 w-4 mr-2" />
                 今天穿这套
               </Button>
-              <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm border-border/60 hover:bg-muted/40" onClick={() => { initCanvasFromOutfit(previewOutfit); setPageState('editing'); }}>
-                <Pencil className="h-4 w-4 mr-2" />
-                编辑
+              <Button variant="outline" className="h-12 px-4 rounded-xl text-sm border-border/60 hover:bg-muted/40 gap-1.5" onClick={handleShuffleOutfit}>
+                <Shuffle className="h-4 w-4" />
+                换一套
               </Button>
             </div>
-            <Button variant="ghost" className="w-full h-11 text-sm text-muted-foreground rounded-xl" onClick={handleGenerate}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              重新生成
-            </Button>
+
+            {/* Secondary actions */}
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1 h-10 text-xs text-muted-foreground rounded-lg" onClick={() => { initCanvasFromOutfit(previewOutfit); setPageState('editing'); }}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                编辑调整
+              </Button>
+              <Button variant="ghost" className="flex-1 h-10 text-xs text-muted-foreground rounded-lg" onClick={handleGenerate}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                重新生成
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1094,37 +1200,16 @@ export default function AIStylingPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 rounded-lg text-xs shrink-0"
-                      onClick={() => handleToggleLock(selectedItem.itemId)}
+                      onClick={() => {
+                        // Replace: open tray to select a replacement
+                        setTrayOpen(true);
+                      }}
                     >
-                      {selectedItem.locked ? (
-                        <>
-                          <Unlock className="h-3.5 w-3.5 mr-1" />
-                          取消保留
-                        </>
-                      ) : (
-                        <>
-                          <BookmarkPlus className="h-3.5 w-3.5 mr-1" />
-                          保留
-                        </>
-                      )}
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      替换
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{selectedItem.locked ? '取消保留，AI 可以替换' : '保留这件，AI 不会替换'}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-lg text-xs shrink-0"
-                      onClick={handleRestoreSize}
-                    >
-                      <MoveHorizontal className="h-3.5 w-3.5 mr-1" />
-                      恢复大小
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>重置单品尺寸</TooltipContent>
+                  <TooltipContent>从衣橱中选择替换单品</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -1174,7 +1259,7 @@ export default function AIStylingPage() {
                 <div className="bg-ai-50 border border-ai-100 rounded-lg p-3 shadow-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
-                      <SparklesIcon className="h-3.5 w-3.5 text-ai-400" />
+                      <Sparkles className="h-3.5 w-3.5 text-ai-400" />
                       <span className="text-xs font-medium text-ai-600">AI 已添加 {aiCompleteResults.length} 件单品</span>
                     </div>
                     <Button
