@@ -251,7 +251,8 @@ export function recallBySlot(
     let candidates = wardrobeItems.filter(item => {
       const itemSlot = CATEGORY_TO_SLOT[item.category];
       return itemSlot === slot && 
-             item.status === 'available' && 
+             item.status === 'available' &&
+             (item.confidence === undefined || item.confidence >= 0.6) &&
              !excludeIds.includes(item.id);
     });
     
@@ -399,6 +400,24 @@ export function validateOutfitRecommendations(
     });
     if (unavailable.length > 0) {
       outfitErrors.push(`衣物不可用: ${unavailable.join(', ')}`);
+    }
+
+    // 检查主体完整性：上装+下装或连体服饰。鞋、包和配饰为可选层。
+    const slots = new Set(
+      itemIds
+        .map(id => getItemSlot(id))
+        .filter((slot): slot is ClothingSlot => Boolean(slot)),
+    );
+    if (!(slots.has('onepiece') || (slots.has('top') && slots.has('bottom')))) {
+      outfitErrors.push('搭配主体不完整，需要上装+下装或连体服饰');
+    }
+
+    // 锁定单品和必须单品都属于硬约束，不能只依赖模型自报状态。
+    if (constraints.locked_item_ids) {
+      const missingLocked = constraints.locked_item_ids.filter(id => !itemIds.includes(id));
+      if (missingLocked.length > 0) {
+        outfitErrors.push(`缺少锁定衣物: ${missingLocked.join(', ')}`);
+      }
     }
     
     if (outfitErrors.length > 0) {

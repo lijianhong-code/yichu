@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoke, Message } from '@/lib/ai/service';
+import { getAIConfig, getAIErrorPayload } from '@/lib/ai/openai-compatible';
 import { wardrobeItems, type WardrobeItem } from '@/lib/mock-data';
-import { validateOutfitRecommendations, type ValidationError } from '@/lib/ai/validation';
+import { validateOutfitRecommendations } from '@/lib/ai/validation';
 
 // Slot definitions for structured recall
 const SLOT_DEFINITIONS: Record<string, { categories: string[]; subCategories: string[] }> = {
@@ -28,7 +29,9 @@ function recallBySlot(items: WardrobeItem[], weather?: { temperature?: number; c
     accessory: [],
   };
 
-  const availableItems = items.filter(item => item.status === 'available');
+  const availableItems = items.filter(item =>
+    item.status === 'available' && (item.confidence === undefined || item.confidence >= 0.6),
+  );
 
   for (const [slot, def] of Object.entries(SLOT_DEFINITIONS)) {
     const candidates = availableItems.filter(item => {
@@ -194,6 +197,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
+  // Fail fast with a useful configuration error instead of opening an SSE
+  // stream that can only report a generic 500 after the request has started.
+  try {
+    getAIConfig();
+  } catch (error) {
+    const { code, message } = getAIErrorPayload(error);
+    return NextResponse.json({ error: message, code }, { status: 503 });
+  }
+
   // Create a ReadableStream for SSE
   const stream = new ReadableStream({
     async start(controller) {
@@ -310,6 +322,10 @@ ${RECOMMEND_PROMPT}`;
           }
         }
 
+        if (!Array.isArray(parsed.outfits)) {
+          throw new Error('AI 返回的搭配方案格式无效');
+        }
+
         // Step 5: Server-side validation
         const allItems = Object.values(candidatesBySlot).flat();
         const validationErrors = validateOutfitRecommendations(parsed.outfits || [], {
@@ -325,6 +341,10 @@ ${RECOMMEND_PROMPT}`;
             const outfitErrors = validationErrors.filter(e => e.outfitIndex !== undefined && parsed.outfits.indexOf(outfit) === e.outfitIndex);
             return outfitErrors.length === 0;
           });
+        }
+
+        if (parsed.outfits.length === 0) {
+          throw new Error(parsed.unmet_reason || '没有找到满足约束的完整搭配');
         }
 
         // Step 6: Transform to frontend format
@@ -367,7 +387,8 @@ ${RECOMMEND_PROMPT}`;
         send('done', {});
       } catch (error) {
         console.error('[AI Styling] Stream error:', error);
-        send('error', { message: error instanceof Error ? error.message : 'AI styling failed' });
+        const { code, message } = getAIErrorPayload(error);
+        send('error', { code, message });
       } finally {
         controller.close();
       }

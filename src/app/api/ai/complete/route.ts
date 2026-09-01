@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoke, Message } from '@/lib/ai/service';
 import { wardrobeItems, type WardrobeItem } from '@/lib/mock-data';
+import { getAIConfig, getAIErrorPayload, getAIErrorStatus } from '@/lib/ai/openai-compatible';
 
 const SYSTEM_PROMPT = `你是"真实衣橱穿搭决策引擎"，目标不是生成时尚灵感，而是使用用户真实拥有、当前可用且信息已确认的衣物，给出能立即执行的穿搭。
 
@@ -89,10 +90,6 @@ function analyzeCurrentOutfit(currentItems: WardrobeItem[]): {
   // Shoes are usually required
   if (!hasShoes) missingSlots.push('shoes');
   
-  // Optional but can be suggested
-  if (!hasBag) missingSlots.push('bag');
-  if (!hasAccessory) missingSlots.push('accessory');
-
   return {
     hasTop,
     hasBottom,
@@ -119,7 +116,8 @@ function getAvailableForSlot(slot: string, excludeIds: string[]): WardrobeItem[]
 
   const categories = slotToCategory[slot] || [];
   return wardrobeItems.filter(item => 
-    item.status === 'available' && 
+    item.status === 'available' &&
+    (item.confidence === undefined || item.confidence >= 0.6) &&
     categories.includes(item.category) && 
     !excludeIds.includes(item.id)
   );
@@ -144,6 +142,13 @@ export async function POST(request: NextRequest) {
         suggestions: [],
         warnings: ['当前没有选择任何单品'],
       });
+    }
+
+    try {
+      getAIConfig();
+    } catch (error) {
+      const { code, message } = getAIErrorPayload(error);
+      return NextResponse.json({ error: message, code }, { status: 503 });
     }
 
     // Analyze current outfit
@@ -239,10 +244,11 @@ ${COMPLETE_PROMPT}`;
     }
 
     // Validate: ensure all suggested IDs exist and are not in current items
-    const validSuggestions = (parsed.suggestions || []).filter(s => {
+    const validSuggestions = (Array.isArray(parsed.suggestions) ? parsed.suggestions : []).filter(s => {
       const item = wardrobeItems.find(i => i.id === s.item_id);
       return item && 
-             item.status === 'available' && 
+             item.status === 'available' &&
+             (item.confidence === undefined || item.confidence >= 0.6) &&
              !currentItemIds.includes(s.item_id);
     });
 
@@ -270,6 +276,7 @@ ${COMPLETE_PROMPT}`;
     });
   } catch (error) {
     console.error('[AI Complete] Error:', error);
-    return NextResponse.json({ error: 'AI complete failed' }, { status: 500 });
+    const { code, message } = getAIErrorPayload(error);
+    return NextResponse.json({ error: message, code }, { status: getAIErrorStatus(error) });
   }
 }

@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { ChevronRight, Shirt, Sparkles, Settings, Shield, HelpCircle, LogOut, Heart, Calendar, Ruler, Moon, Bell, BellOff, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -19,9 +18,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export default function ProfilePage() {
   const { state, getStats, updateUser } = useWardrobe();
@@ -83,24 +84,6 @@ export default function ProfilePage() {
     });
   }, [selectedStyles, selectedColors, selectedOccasions, updateUser]);
 
-  const toggleStyle = (style: string) => {
-    setSelectedStyles(prev =>
-      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
-    );
-  };
-
-  const toggleColor = (color: string) => {
-    setSelectedColors(prev =>
-      prev.includes(color) ? prev.filter(c => c !== color) : [...prev, color]
-    );
-  };
-
-  const toggleOccasion = (occasion: string) => {
-    setSelectedOccasions(prev =>
-      prev.includes(occasion) ? prev.filter(o => o !== occasion) : [...prev, occasion]
-    );
-  };
-
   const handleMenuClick = (action: string) => {
     switch (action) {
       case 'records':
@@ -154,10 +137,11 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      {/* Header with User Info */}
-      <div className="bg-card border-b border-border px-4 pt-[env(safe-area-inset-top)] pb-6">
-        <div className="flex items-center gap-4 py-4">
+      <PageHeader title="我的" description="偏好、数据与穿着洞察" />
+      <div className="bg-card border-b border-border px-4 pb-6">
+        <div className="flex items-center gap-4 py-5">
           <Avatar className="w-16 h-16 ring-2 ring-primary/20">
+            {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
             <AvatarFallback className="text-lg font-medium bg-primary/10 text-primary">
               {user.name.charAt(0)}
             </AvatarFallback>
@@ -243,9 +227,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">暂无衣物数据</p>
-              </div>
+              <EmptyState className="py-8" title="暂无衣物数据" />
             )}
           </CardContent>
         </Card>
@@ -313,9 +295,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">暂无衣物数据</p>
-              </div>
+              <EmptyState className="py-8" title="暂无衣物数据" />
             )}
           </CardContent>
         </Card>
@@ -422,12 +402,12 @@ export default function ProfilePage() {
                 </Card>
               ))
             ) : (
-              <div className="text-center py-12">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-28 h-28 mx-auto mb-3 object-contain opacity-70" />
-                <p className="text-sm text-muted-foreground">暂无穿着记录</p>
-                <p className="text-xs text-muted-foreground mt-1">开始记录你的每日穿搭吧</p>
-              </div>
+              <EmptyState
+                className="py-12"
+                imageSrc="/empty-calendar.jpeg"
+                title="暂无穿着记录"
+                description="开始记录你的每日穿搭吧"
+              />
             )}
           </div>
         </SheetContent>
@@ -442,48 +422,66 @@ export default function ProfilePage() {
           <div className="py-4 space-y-5 overflow-y-auto">
             <div>
               <h4 className="text-sm font-medium text-foreground mb-3">偏好风格</h4>
-              <div className="flex flex-wrap gap-2">
+              <ToggleGroup
+                type="multiple"
+                value={selectedStyles}
+                onValueChange={setSelectedStyles}
+                variant="outline"
+                size="sm"
+                className="flex-wrap justify-start gap-2"
+              >
                 {['休闲', '通勤', '运动', '约会', '正式', '街头', '文艺'].map((style) => (
-                  <Badge
+                  <ToggleGroupItem
                     key={style}
-                    variant={selectedStyles.includes(style) ? 'default' : 'outline'}
-                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
-                    onClick={() => toggleStyle(style)}
+                    value={style}
+                    className="h-10 rounded-full px-3 text-sm"
                   >
                     {style}
-                  </Badge>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
             <div>
               <h4 className="text-sm font-medium text-foreground mb-3">偏好颜色</h4>
-              <div className="flex flex-wrap gap-2">
+              <ToggleGroup
+                type="multiple"
+                value={selectedColors}
+                onValueChange={setSelectedColors}
+                variant="outline"
+                size="sm"
+                className="flex-wrap justify-start gap-2"
+              >
                 {['黑白灰', '大地色', '蓝色系', '绿色系', '红色系', '粉色系', '紫色系'].map((color) => (
-                  <Badge
+                  <ToggleGroupItem
                     key={color}
-                    variant={selectedColors.includes(color) ? 'default' : 'outline'}
-                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
-                    onClick={() => toggleColor(color)}
+                    value={color}
+                    className="h-10 rounded-full px-3 text-sm"
                   >
                     {color}
-                  </Badge>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
             <div>
               <h4 className="text-sm font-medium text-foreground mb-3">常穿场合</h4>
-              <div className="flex flex-wrap gap-2">
+              <ToggleGroup
+                type="multiple"
+                value={selectedOccasions}
+                onValueChange={setSelectedOccasions}
+                variant="outline"
+                size="sm"
+                className="flex-wrap justify-start gap-2"
+              >
                 {['办公室', '周末', '聚会', '运动', '约会', '旅行'].map((occasion) => (
-                  <Badge
+                  <ToggleGroupItem
                     key={occasion}
-                    variant={selectedOccasions.includes(occasion) ? 'default' : 'outline'}
-                    className="cursor-pointer px-3 py-1 rounded-full text-sm transition-all"
-                    onClick={() => toggleOccasion(occasion)}
+                    value={occasion}
+                    className="h-10 rounded-full px-3 text-sm"
                   >
                     {occasion}
-                  </Badge>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
             <div className="pt-2">
               <Button className="w-full bg-primary hover:bg-primary-hover" onClick={() => { setIsPreferenceSheetOpen(false); toast.success('偏好已保存'); }}>

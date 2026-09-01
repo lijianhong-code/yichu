@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoke, Message } from '@/lib/ai/service';
-import { wardrobeItems, type WardrobeItem } from '@/lib/mock-data';
+import { wardrobeItems } from '@/lib/mock-data';
 import { recallBySlot, validateOutfitRecommendations, fixOutfitRecommendations, getWeatherDescription, type ClothingSlot } from '@/lib/ai/validation';
+import { getAIConfig, getAIErrorPayload, getAIErrorStatus } from '@/lib/ai/openai-compatible';
 
 const SYSTEM_PROMPT = `你是"真实衣橱穿搭决策引擎"，目标不是生成时尚灵感，而是使用用户真实拥有、当前可用且信息已确认的衣物，给出能立即执行的穿搭。
 
@@ -82,6 +83,13 @@ export async function POST(request: NextRequest) {
 
     if (!referenceAnalysis) {
       return NextResponse.json({ error: 'Missing reference analysis' }, { status: 400 });
+    }
+
+    try {
+      getAIConfig();
+    } catch (error) {
+      const { code, message } = getAIErrorPayload(error);
+      return NextResponse.json({ error: message, code }, { status: 503 });
     }
 
     // Recall candidates by slots
@@ -213,6 +221,7 @@ ${RECREATE_PROMPT}`
     });
   } catch (error) {
     console.error('[AI Recreate] Error:', error);
-    return NextResponse.json({ error: 'AI recreate failed' }, { status: 500 });
+    const { code, message } = getAIErrorPayload(error);
+    return NextResponse.json({ error: message, code }, { status: getAIErrorStatus(error) });
   }
 }

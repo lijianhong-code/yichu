@@ -8,12 +8,12 @@ import {
   Undo2,
   Redo2,
   Plus,
-  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { WardrobeItem } from "@/lib/mock-data"
+import { EmptyState } from "@/components/empty-state"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -686,22 +686,12 @@ export function OutfitCanvas({
 
         {/* Empty State */}
         {items.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-neutral-500">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 flex items-center justify-center shadow-sm">
-                <img src="/ai-hanger.jpeg?v=1" alt="AI" className="w-12 h-12 opacity-60 rounded-lg object-cover" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-ai-400/80 flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-white" />
-              </div>
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-medium text-foreground/70">开始你的搭配</p>
-              <p className="text-xs text-muted-foreground">
-                {editable ? '从下方衣橱添加单品' : '点击 AI 帮我搭 或 手动搭一套'}
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            className="absolute inset-0 border-0 p-4 text-neutral-500"
+            imageSrc="/ai-hanger.jpeg?v=1"
+            title="开始你的搭配"
+            description={editable ? '从下方衣橱添加单品' : '点击 AI 帮我搭或手动搭一套'}
+          />
         )}
       </div>
 
@@ -715,7 +705,7 @@ export function OutfitCanvas({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-10 w-10"
                   onClick={onAddFromWardrobe}
                   disabled={items.length >= MAX_OBJECTS}
                 >
@@ -732,7 +722,7 @@ export function OutfitCanvas({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9"
+                      className="h-10 w-10"
                       onClick={() => onReplaceItem?.(selectedItem.itemId)}
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -746,7 +736,7 @@ export function OutfitCanvas({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 text-error"
+                      className="h-10 w-10 text-error"
                       onClick={() => removeItem(selectedItem.id)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -765,7 +755,7 @@ export function OutfitCanvas({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-10 w-10"
                   onClick={undo}
                   disabled={!canUndo}
                 >
@@ -780,7 +770,7 @@ export function OutfitCanvas({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-10 w-10"
                   onClick={redo}
                   disabled={!canRedo}
                 >

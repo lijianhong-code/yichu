@@ -42,8 +42,11 @@
 5. #7B708C 第五数据
 
 ## 字体
-- 字体族: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif
-- 数字统计使用等宽数字特性
+- 字体族: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif
+- 不加载远程字体：微信小程序优先使用系统字体，降低首屏等待并避免平台字形漂移
+- 正文、按钮、表单和导航统一使用同一字体栈；不要在局部引入另一套字体
+- 字距统一为 0；仅数字使用 tabular-nums 保证统计对齐
+- 字号层级：12px 辅助信息、14px 正文、16px 区块标题、20px 页面重点；不使用视口相关字号
 
 ## 间距
 - 基础网格: 4px

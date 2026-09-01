@@ -3,7 +3,11 @@
  * 统一的 AI 调用入口，包含推荐、补全、参考图分析等功能
  */
 
-import { LLMClient, type Message } from 'coze-coding-dev-sdk';
+import {
+  invokeOpenAI,
+  type Message,
+  type InvokeOptions,
+} from './openai-compatible';
 import { wardrobeItems, type WardrobeItem } from '@/lib/mock-data';
 import { 
   recallBySlot, 
@@ -14,30 +18,9 @@ import {
   CATEGORY_TO_SLOT 
 } from './validation';
 
-// 初始化客户端
-const client = new LLMClient();
-
 // 导出 invoke 函数供 API 路由使用
-export async function invoke(messages: Message[], config?: { model?: string; temperature?: number; retries?: number }) {
-  const model = config?.model || 'doubao-seed-2-0-mini-260215';
-  const temperature = config?.temperature ?? 0.3;
-  const retries = config?.retries ?? 1;
-
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const result = await client.invoke(messages, { model, temperature });
-      return result;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`[LLM] Attempt ${attempt + 1}/${retries + 1} failed:`, lastError.message);
-      if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-      }
-    }
-  }
-
-  throw lastError || new Error('LLM invocation failed after retries');
+export async function invoke(messages: Message[], config: InvokeOptions = {}) {
+  return invokeOpenAI(messages, config);
 }
 
 // 导出 Message 类型
@@ -286,10 +269,7 @@ async function callLLM(systemPrompt: string, userPrompt: string, temperature: nu
     { role: 'user', content: userPrompt },
   ];
   
-  const result = await client.invoke(messages, {
-    model: 'doubao-seed-2-0-mini',
-    temperature,
-  });
+  const result = await invoke(messages, { temperature });
   
   return result.content || '';
 }

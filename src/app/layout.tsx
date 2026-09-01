@@ -19,7 +19,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body className="min-h-screen bg-background antialiased" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <WardrobeProvider>
-          <main className="mx-auto max-w-xl pb-20 relative">
+          <main className="mx-auto max-w-xl pb-16 relative">
             <div className="animate-in fade-in duration-300">
               {children}
             </div>

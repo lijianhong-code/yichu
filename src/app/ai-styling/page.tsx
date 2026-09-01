@@ -30,6 +30,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Sheet,
   SheetContent,
@@ -59,6 +62,7 @@ import type { WardrobeItem, Outfit } from '@/lib/mock-data';
 import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
 import { getCurrentWeather } from '@/lib/weather';
+import { PageHeader } from '@/components/page-header';
 
 const iconMap: Record<string, React.ReactNode> = {
   Briefcase: <Briefcase className="h-3.5 w-3.5" />,
@@ -86,6 +90,20 @@ interface CandidateOutfit {
     explanation: string;
     items: WardrobeItem[];
   };
+}
+
+async function getAIResponseError(response: Response, fallback: string): Promise<Error> {
+  try {
+    const payload = await response.clone().json() as { error?: unknown; message?: unknown };
+    const message = typeof payload.error === 'string'
+      ? payload.error
+      : typeof payload.message === 'string'
+        ? payload.message
+        : fallback;
+    return new Error(message);
+  } catch {
+    return new Error(fallback);
+  }
 }
 
 export default function AIStylingPage() {
@@ -231,9 +249,7 @@ export default function AIStylingPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`AI 服务返回 ${response.status}`);
-      }
+      if (!response.ok) throw await getAIResponseError(response, `AI 服务返回 ${response.status}`);
 
       // Handle SSE streaming
       const reader = response.body?.getReader();
@@ -361,9 +377,7 @@ export default function AIStylingPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`AI 服务返回 ${response.status}`);
-      }
+      if (!response.ok) throw await getAIResponseError(response, `AI 服务返回 ${response.status}`);
 
       const reader = response.body?.getReader();
       if (!reader) {
@@ -567,7 +581,7 @@ export default function AIStylingPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('AI 补全请求失败');
+      if (!response.ok) throw await getAIResponseError(response, `AI 补全请求失败（${response.status}）`);
 
       const data = await response.json();
 
@@ -907,52 +921,41 @@ export default function AIStylingPage() {
   return (
     <TooltipProvider>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
-        {/* ==================== SIMPLIFIED HEADER ==================== */}
-        <header className="shrink-0 glass-surface border-b border-border/30">
-          <div className="px-4 pt-[env(safe-area-inset-top)] pb-2">
-            <div className="flex items-center justify-between h-12">
-              <div className="flex items-center gap-3">
-                {(pageState === 'preview' || canvasItems.length > 0) && (
-                  <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                )}
-                <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  搭配
-                </h1>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShowHistory(true)}>
-                  <History className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShowMoreMenu(true)}>
-                  <MoreHorizontal className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          title="搭配"
+          description="根据天气、场合和你的衣橱生成方案"
+          className="static shrink-0"
+          leading={(pageState === 'preview' || canvasItems.length > 0) ? (
+            <Button variant="ghost" size="icon" aria-label="返回搭配输入" onClick={() => { setPageState('empty'); setCanvasItems([]); }}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          ) : undefined}
+          actions={(
+            <>
+              <Button variant="ghost" size="icon" aria-label="查看历史方案" onClick={() => setShowHistory(true)}>
+                <History className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="更多操作" onClick={() => setShowMoreMenu(true)}>
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+        />
 
         {/* ==================== CANVAS AREA (沉浸式) ==================== */}
         <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          <div className={`rounded-2xl outfit-stage noise-texture relative transition-all duration-300 flex flex-col ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ flex: '1 1 0%', minHeight: '200px' }}>
+          <div className={`rounded-lg outfit-stage noise-texture relative transition-all duration-300 flex flex-col ${isTransitioning ? 'opacity-50 scale-98' : ''}`} style={{ flex: '1 1 0%', minHeight: '200px' }}>
             {/* Weather/Location floating tag - top right */}
             {(pageState !== 'empty' || canvasItems.length > 0) && (
-              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground shadow-sm border border-border/20">
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-background text-[10px] text-muted-foreground shadow-sm border border-border/20">
                 <span>{weatherData ? `${weatherData.city} · ${weatherData.temp}°C ${weatherData.text}` : '上海 · 22-28°C'}</span>
-              </div>
-            )}
-            {/* Empty state illustration */}
-            {pageState === 'empty' && !candidates.length && canvasItems.length === 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
-                <img src="/empty-styling.jpeg?v=2" alt="" className="w-28 h-28 object-contain opacity-50 mb-4" />
-                <p className="text-sm text-muted-foreground text-center">描述你的需求，AI 将为你智能搭配</p>
               </div>
             )}
 
             {/* OVERLAY: Loading state */}
             {pageState === 'loading' && (
-              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center py-8 px-6 z-10">
+              <div className="absolute inset-0 bg-background flex flex-col items-center justify-center py-8 px-6 z-10">
+                <Spinner className="mb-4 size-6 text-primary" />
                 <div className="flex items-center justify-center gap-3 flex-wrap mb-8">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="w-20 h-24 sm:w-24 sm:h-28 rounded-lg bg-muted/60" />
@@ -1017,7 +1020,7 @@ export default function AIStylingPage() {
           </div>
           {/* WardrobeTray - bottom of canvas area (in editing/manual mode) */}
           {(pageState === 'editing' || trayOpen) && (
-            <div className="shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
+            <div className="shrink-0 border-t border-border/30 bg-background">
               <WardrobeTray
                 expanded={true}
                 onToggle={() => setTrayOpen(!trayOpen)}
@@ -1030,21 +1033,21 @@ export default function AIStylingPage() {
         
         {/* EMPTY STATE Actions - Three entry points: Quick Recommend / Scene Tags / Reference Image */}
         {pageState === 'empty' && canvasItems.length === 0 && (
-          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2.5 border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2.5 border-t border-border/20 bg-background">
             {/* AI error message */}
             {aiError && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+              <Alert variant="destructive" className="flex items-center gap-2 px-3 py-2">
                 <XCircle className="h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">{aiError}</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive/60 hover:text-destructive" onClick={() => setAiError(null)}>
+                <AlertDescription className="flex-1 text-xs">{aiError}</AlertDescription>
+                <Button variant="ghost" size="icon-sm" aria-label="关闭错误提示" className="text-destructive/60 hover:text-destructive" onClick={() => setAiError(null)}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </Alert>
             )}
 
             {/* Primary action: One-click recommend */}
             <Button
-              className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
+              className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all"
               onClick={handleQuickRecommend}
             >
               <Wand2 className="h-4 w-4 mr-2" />
@@ -1059,7 +1062,7 @@ export default function AIStylingPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleSceneClick(scenario.label)}
-                  className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/30 hover:bg-primary/5 gap-1.5 shrink-0 transition-all"
+                  className="h-10 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/30 hover:bg-primary/5 gap-1.5 shrink-0 transition-all"
                 >
                   {iconMap[scenario.icon] || null}
                   {scenario.label}
@@ -1088,14 +1091,14 @@ export default function AIStylingPage() {
               />
 
               {/* Text input - compact */}
-              <div className="flex-1 flex items-center h-10 rounded-lg bg-muted/20 border border-border/30 overflow-hidden">
-                <input
+              <div className="relative flex-1">
+                <Input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="或输入需求..."
                   aria-label="搭配需求描述"
-                  className="flex-1 h-full px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                  className="h-10 bg-muted/20 pr-11 text-sm placeholder:text-muted-foreground/40"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && inputValue.trim()) {
                       handleGenerate();
@@ -1103,8 +1106,9 @@ export default function AIStylingPage() {
                   }}
                 />
                 <Button
-                  size="icon"
-                  className="h-8 w-8 mr-1 rounded-md bg-primary hover:bg-primary/90 shrink-0"
+                  size="icon-sm"
+                  aria-label="发送搭配需求"
+                  className="absolute right-1 top-1 rounded-md bg-primary hover:bg-primary/90"
                   onClick={handleGenerate}
                   disabled={!inputValue.trim()}
                 >
@@ -1117,7 +1121,7 @@ export default function AIStylingPage() {
 
         {/* MANUAL MODE - Redirect to editing state when canvas has items */}
         {pageState === 'empty' && canvasItems.length > 0 && (
-          <div className="shrink-0 px-3 pt-2 pb-3 border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          <div className="shrink-0 px-3 pt-2 pb-3 border-t border-border/20 bg-background">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -1151,20 +1155,20 @@ export default function AIStylingPage() {
 
         {/* PREVIEW STATE ACTIONS - Simplified: 1 outfit + shuffle + one-line reason */}
         {pageState === 'preview' && (
-          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background">
             {/* One-line reason */}
-            <div className="flex items-start gap-2 rounded-xl bg-muted/20 border border-border/20 px-3 py-2.5">
+            <div className="flex items-start gap-2 rounded-lg bg-muted/20 border border-border/20 px-3 py-2.5">
               <Sparkles className="h-3.5 w-3.5 text-ai-400 mt-0.5 shrink-0" />
               <p className="text-xs text-foreground leading-relaxed flex-1 line-clamp-2">{previewOutfit.explanation}</p>
             </div>
 
             {/* Main actions */}
             <div className="flex gap-2.5">
-              <Button className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all" onClick={handleWearToday}>
+              <Button className="flex-1 h-12 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium btn-primary-glow transition-all" onClick={handleWearToday}>
                 <Check className="h-4 w-4 mr-2" />
                 今天穿这套
               </Button>
-              <Button variant="outline" className="h-12 px-4 rounded-xl text-sm border-border/60 hover:bg-muted/40 gap-1.5" onClick={handleShuffleOutfit}>
+              <Button variant="outline" className="h-12 px-4 rounded-lg text-sm border-border/60 hover:bg-muted/40 gap-1.5" onClick={handleShuffleOutfit}>
                 <Shuffle className="h-4 w-4" />
                 换一套
               </Button>
@@ -1186,7 +1190,7 @@ export default function AIStylingPage() {
 
         {/* EDITING STATE ACTIONS - show when in editing state OR tray is open */}
         {(pageState === 'editing' || trayOpen) && (
-          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          <div className="shrink-0 px-3 pt-2 pb-3 space-y-2 border-t border-border/20 bg-background">
             {/* Selected item toolbar */}
             {selectedItem && (
               <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -1288,7 +1292,7 @@ export default function AIStylingPage() {
 
         {/* Unsaved Changes Confirmation Dialog */}
         <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-          <DialogContent className="sm:max-w-sm rounded-xl">
+          <DialogContent className="sm:max-w-sm rounded-lg">
             <DialogHeader>
               <DialogTitle className="text-base">放弃修改？</DialogTitle>
               <DialogDescription>
@@ -1316,7 +1320,7 @@ export default function AIStylingPage() {
 
         {/* Cancel Loading Confirmation Dialog */}
         <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-          <DialogContent className="sm:max-w-sm rounded-xl">
+          <DialogContent className="sm:max-w-sm rounded-lg">
             <DialogHeader>
               <DialogTitle className="text-base">取消生成？</DialogTitle>
               <DialogDescription>

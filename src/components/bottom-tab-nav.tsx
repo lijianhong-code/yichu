@@ -20,9 +20,9 @@ export function BottomTabNav({ wardrobeBadge = 0 }: BottomTabNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/80 backdrop-blur-xl" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="mx-auto max-w-xl">
-        <div className="flex h-16 items-center justify-around px-2">
+        <div className="flex h-14 items-center justify-around px-2">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
             const Icon = tab.icon;
@@ -33,7 +33,7 @@ export function BottomTabNav({ wardrobeBadge = 0 }: BottomTabNavProps) {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'relative flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 transition-all duration-200',
+                  'relative flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 transition-all duration-200',
                   isActive
                     ? 'bg-primary/5 text-primary'
                     : 'text-muted-foreground hover:text-foreground active:scale-95'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoke, Message } from '@/lib/ai/service';
+import { getAIConfig, getAIErrorPayload, getAIErrorStatus } from '@/lib/ai/openai-compatible';
 
 const SYSTEM_PROMPT = `你是"真实衣橱穿搭决策引擎"，目标不是生成时尚灵感，而是使用用户真实拥有、当前可用且信息已确认的衣物，给出能立即执行的穿搭。
 
@@ -48,13 +49,30 @@ const ANALYZE_PROMPT = `任务类型：analyze_reference_image
   "uncertainties": []
 }`;
 
+function isSupportedImageUrl(value: string): boolean {
+  if (value.startsWith('data:image/')) return value.length <= 8_000_000;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { imageUrl } = body;
 
-    if (!imageUrl || typeof imageUrl !== 'string') {
-      return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+    if (!imageUrl || typeof imageUrl !== 'string' || !isSupportedImageUrl(imageUrl)) {
+      return NextResponse.json({ error: '请提供 HTTPS 图片地址或不超过 8MB 的 data:image 图片' }, { status: 400 });
+    }
+
+    try {
+      getAIConfig();
+    } catch (error) {
+      const { code, message } = getAIErrorPayload(error);
+      return NextResponse.json({ error: message, code }, { status: 503 });
     }
 
     // Build message with image
@@ -69,7 +87,7 @@ export async function POST(request: NextRequest) {
           { type: 'text', text: '请分析这张参考图中的服装搭配：' },
           { type: 'image_url', image_url: { url: imageUrl } },
           { type: 'text', text: ANALYZE_PROMPT }
-        ] as Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
+        ]
       },
     ];
 
@@ -121,6 +139,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[AI Analyze Reference] Error:', error);
-    return NextResponse.json({ error: 'AI analyze reference failed' }, { status: 500 });
+    const { code, message } = getAIErrorPayload(error);
+    return NextResponse.json({ error: message, code }, { status: getAIErrorStatus(error) });
   }
 }

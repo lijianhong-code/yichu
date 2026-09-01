@@ -56,7 +56,9 @@ export function WardrobeTray({
     )
 
     if (activeCategory !== "全部") {
-      items = items.filter((item) => item.category === activeCategory)
+      items = items.filter((item) => activeCategory === "连体"
+        ? item.category === "连体" || item.category === "连衣裙"
+        : item.category === activeCategory)
     }
 
     if (searchQuery) {
@@ -80,10 +82,12 @@ export function WardrobeTray({
   // Collapsed state - compact handle
   if (!expanded) {
     return (
-      <div
+      <Button
+        type="button"
+        variant="ghost"
         onClick={onToggle}
         className={cn(
-          "w-full h-10 flex items-center justify-center gap-2 cursor-pointer",
+          "w-full h-10 rounded-none flex items-center justify-center gap-2",
           "bg-background border-t border-border/30",
           "hover:bg-muted/30 active:bg-muted/50 transition-colors duration-150",
           className
@@ -95,7 +99,7 @@ export function WardrobeTray({
           衣橱 ({filteredItems.length})
         </span>
         <ChevronUp className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </Button>
     )
   }
 
@@ -116,7 +120,7 @@ export function WardrobeTray({
             variant={searchQuery ? "secondary" : "ghost"}
             size="icon"
             onClick={() => setSearchQuery(searchQuery ? "" : " ")}
-            className="w-8 h-8 shrink-0"
+            className="w-10 h-10 shrink-0"
             aria-label="搜索"
           >
             {searchQuery ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
@@ -129,7 +133,7 @@ export function WardrobeTray({
               placeholder="搜索衣物..."
               value={searchQuery === " " ? "" : searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 text-sm flex-1"
+              className="h-10 text-sm flex-1"
             />
           ) : (
             /* Category Filter - Horizontal scroll */
@@ -142,7 +146,7 @@ export function WardrobeTray({
                     size="sm"
                     onClick={() => setActiveCategory(cat)}
                     className={cn(
-                      "h-8 px-3 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all",
+                      "h-10 px-3 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all",
                       activeCategory === cat
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted/50 text-muted-foreground hover:bg-muted"
@@ -150,7 +154,7 @@ export function WardrobeTray({
                   >
                     {cat}
                     <span className="ml-1 text-[10px] opacity-70">
-                      {wardrobeItems.filter((i: WardrobeItem) => cat === "全部" || i.category === cat).length}
+                      {wardrobeItems.filter((i: WardrobeItem) => cat === "全部" || (cat === "连体" ? i.category === "连体" || i.category === "连衣裙" : i.category === cat)).length}
                     </span>
                   </Button>
                 ))}
@@ -163,7 +167,7 @@ export function WardrobeTray({
             variant="ghost"
             size="icon"
             onClick={onToggle}
-            className="w-8 h-8 shrink-0"
+            className="w-10 h-10 shrink-0"
             aria-label="收起"
           >
             <ChevronUp className="w-4 h-4" />

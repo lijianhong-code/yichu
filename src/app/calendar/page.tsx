@@ -2,15 +2,16 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil, Calendar as CalendarIcon, Check, Edit, Archive } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, Sparkles, Shirt, Plus, RotateCcw, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Card, CardContent } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWardrobe } from '@/lib/store';
-import { Outfit } from '@/lib/mock-data';
 import { toast } from '@/lib/toast';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
 
 // Weather icons
 const weatherIcons = {
@@ -63,7 +64,6 @@ function formatDateDisplay(dateStr: string): string {
 export default function CalendarPage() {
   const router = useRouter();
   const { state, getRecordsByDate, addRecord } = useWardrobe();
-  const records = state.records;
   const outfits = state.outfits;
 
   // Use real current date
@@ -73,7 +73,6 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(formatDateStr(now.getFullYear(), now.getMonth(), now.getDate()));
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
-  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   
   // Swipe gesture state
   const touchStartX = useRef<number | null>(null);
@@ -149,18 +148,6 @@ export default function CalendarPage() {
     setIsRecordSheetOpen(true);
   };
 
-  const handleRecordOutfit = (outfit: Outfit) => {
-    addRecord({
-      id: `record-${Date.now()}`,
-      date: selectedDate,
-      outfitId: outfit.id,
-      outfit: outfit,
-      weather: '晴',
-      note: '',
-    });
-    toast.success('已记录到日历');
-  };
-
   const handleGoToStyling = () => {
     router.push('/ai-styling');
   };
@@ -202,26 +189,22 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 glass-surface border-b border-border">
-        <div className="px-4 pt-[env(safe-area-inset-top)]">
-          <div className="flex items-center justify-between h-12">
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">穿着日历</h1>
-            </div>
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(val) => val && setViewMode(val as 'week' | 'month')}
-              variant="outline"
-              size="sm"
-            >
-              <ToggleGroupItem value="week">周</ToggleGroupItem>
-              <ToggleGroupItem value="month">月</ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="穿着日历"
+        description="记录、计划并回看你的每日搭配"
+        actions={(
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(val) => val && setViewMode(val as 'week' | 'month')}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="week">周</ToggleGroupItem>
+            <ToggleGroupItem value="month">月</ToggleGroupItem>
+          </ToggleGroup>
+        )}
+      />
 
       {/* Calendar Section with Swipe */}
       <div 
@@ -329,8 +312,6 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {/* Swipe hint */}
-        <p className="text-xs text-muted-foreground text-center mt-2">左右滑动切换月份</p>
       </div>
 
       {/* Date Detail Section */}
@@ -392,13 +373,11 @@ export default function CalendarPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/empty-calendar.jpeg" alt="暂无记录" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
-                <p className="text-sm text-muted-foreground">
-                  {isFuture ? '还未到来，敬请期待' : isToday ? '今天还没有记录，快去搭配吧' : '这天没有记录'}
-                </p>
-              </div>
+              <EmptyState
+                className="py-6"
+                imageSrc="/empty-calendar.jpeg"
+                title={isFuture ? '还未到来，敬请期待' : isToday ? '今天还没有记录，快去搭配吧' : '这天没有记录'}
+              />
             )}
 
             {/* Action Buttons */}
@@ -492,15 +471,18 @@ export default function CalendarPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/empty-styling.jpeg" alt="暂无搭配" className="w-24 h-24 mx-auto mb-3 object-contain opacity-60" />
-                <p className="text-sm text-muted-foreground">暂无搭配方案</p>
-                <Button variant="outline" className="mt-3" onClick={() => { setIsRecordSheetOpen(false); handleGoToStyling(); }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  创建搭配
-                </Button>
-              </div>
+              <EmptyState
+                className="py-8"
+                imageSrc="/empty-styling.jpeg"
+                title="暂无搭配方案"
+                description="先创建一套搭配，再记录到指定日期"
+                action={(
+                  <Button variant="outline" onClick={() => { setIsRecordSheetOpen(false); handleGoToStyling(); }}>
+                    <Plus className="w-4 h-4" />
+                    创建搭配
+                  </Button>
+                )}
+              />
             )}
           </div>
         </SheetContent>

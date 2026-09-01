@@ -86,8 +86,8 @@
   --color-chart-4: #4B7698;
   --color-chart-5: #7B708C;
 
-  /* 字体 */
-  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  /* 字体：不加载远程字体，优先使用 iOS/Android 系统字体，保证微信端性能和字形一致 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
 
   /* 圆角 (DESIGN.md 规范) */
   --radius-xs: 0.25rem;   /* 4px - 小标签 */
@@ -156,8 +156,24 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ========================================
@@ -328,7 +344,7 @@ body {
 
 .font-display {
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .font-numeric {

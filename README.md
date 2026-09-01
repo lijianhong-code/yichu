@@ -4,10 +4,22 @@
 
 ## 快速开始
 
+### 配置 AI（OpenAI 兼容接口）
+
+复制 `.env.example` 为 `.env.local`，填入服务端变量：
+
+```bash
+cp .env.example .env.local
+# 编辑 .env.local，至少填写 OPENAI_API_KEY、OPENAI_BASE_URL、OPENAI_MODEL
+```
+
+启动后访问 `/api/ai/status` 可检查配置是否生效。密钥只放在服务端环境，不能使用 `NEXT_PUBLIC_` 前缀。
+完整的 AI 链路、微信小程序接入和上线清单见 [`docs/AI-OPTIMIZATION.md`](docs/AI-OPTIMIZATION.md)。
+
 ### 启动开发服务器
 
 ```bash
-coze dev
+pnpm dev
 ```
 
 启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
@@ -17,13 +29,13 @@ coze dev
 ### 构建生产版本
 
 ```bash
-coze build
+pnpm build
 ```
 
 ### 启动生产服务器
 
 ```bash
-coze start
+pnpm start
 ```
 
 ## 项目结构

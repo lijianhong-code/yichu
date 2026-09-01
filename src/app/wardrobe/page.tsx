@@ -24,18 +24,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet';
 import {
   AlertDialog,
@@ -51,11 +43,34 @@ import { useWardrobe } from '@/lib/store';
 import { toast } from '@/lib/toast';
 import { type ClothingItem, CATEGORIES, type Outfit } from '@/lib/mock-data';
 import { OutfitCanvas } from '@/components/outfit-canvas';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { Spinner } from '@/components/ui/spinner';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   available: { label: '可用', color: 'bg-muted text-muted-foreground', icon: Shirt },
   archived: { label: '归档', color: 'bg-muted/50 text-muted-foreground/50', icon: Archive },
 };
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error || new Error('无法读取图片'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function normalizeDetectedCategory(category?: string): string {
+  if (!category) return '上装';
+  if (category.includes('连')) return '连体';
+  if (category.includes('鞋')) return '鞋';
+  if (category.includes('包')) return '包';
+  if (category.includes('配饰') || category.includes('饰品')) return '配饰';
+  if (category.includes('外套') || category.includes('夹克') || category.includes('大衣')) return '外套';
+  if (category.includes('裤') || category.includes('裙') || category.includes('下装')) return '下装';
+  return '上装';
+}
 
 export default function WardrobePage() {
   const router = useRouter();
@@ -84,7 +99,8 @@ export default function WardrobePage() {
   const itemCounts = useMemo(() => {
     const counts: Record<string, number> = { all: wardrobeItems.length };
     wardrobeItems.forEach((item) => {
-      counts[item.category] = (counts[item.category] || 0) + 1;
+      const categoryKey = item.category === '连衣裙' ? '连体' : item.category;
+      counts[categoryKey] = (counts[categoryKey] || 0) + 1;
     });
     return counts;
   }, [wardrobeItems]);
@@ -93,7 +109,9 @@ export default function WardrobePage() {
   const filteredItems = useMemo(() => {
     let items = wardrobeItems;
     if (activeCategory !== 'all') {
-      items = items.filter((item) => item.category === activeCategory);
+      items = items.filter((item) => activeCategory === '连体'
+        ? item.category === '连体' || item.category === '连衣裙'
+        : item.category === activeCategory);
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -132,31 +150,69 @@ export default function WardrobePage() {
     return () => el.removeEventListener('scroll', checkScroll);
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setIsAnalyzing(true);
-    setTimeout(() => {
-      const newItems: ClothingItem[] = files.map((file, index) => ({
-        id: `new-${Date.now()}-${index}`,
-        name: `新衣物 ${wardrobeItems.length + index + 1}`,
-        category: '上装',
-        subCategory: 'T恤',
-        primaryColor: '#808080',
-        colors: ['灰色'],
-        season: ['春夏'],
+    const uploadId = Date.now();
+    const results = await Promise.allSettled(files.map(async (file, index): Promise<ClothingItem> => {
+      const imageUrl = await readFileAsDataUrl(file);
+      let detected: {
+        category?: string;
+        sub_category?: string;
+        colors?: string[];
+        material_appearance?: string;
+        pattern?: string;
+      } | undefined;
+
+      try {
+        const response = await fetch('/api/ai/analyze-reference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl }),
+        });
+        if (response.ok) {
+          const payload = await response.json() as { analysis?: { garments?: typeof detected[] } };
+          detected = payload.analysis?.garments?.[0];
+        }
+      } catch {
+        // A local draft is still useful when AI is not configured or unavailable.
+      }
+
+      const category = normalizeDetectedCategory(detected?.category);
+      const confidence = detected ? 0.72 : 0.25;
+      return {
+        id: `new-${uploadId}-${index}`,
+        name: detected?.sub_category ? `${category} · ${detected.sub_category}` : `待确认衣物 ${wardrobeItems.length + index + 1}`,
+        category,
+        subCategory: detected?.sub_category || '待确认',
+        primaryColor: '#A3ABA5',
+        colors: detected?.colors?.length ? detected.colors : ['待确认'],
+        season: ['全年'],
         occasions: ['日常'],
         style: ['简约'],
-        material: '棉',
+        material: detected?.material_appearance || '待确认',
+        pattern: detected?.pattern || '未知',
         status: 'available' as ClothingItem['status'],
-        imageUrl: URL.createObjectURL(file),
-        description: '新上传的衣物',
+        imageUrl,
+        description: detected
+          ? `${detected.colors?.join('、') || '颜色待确认'} · ${detected.material_appearance || '材质待确认'}，保存前请确认识别结果`
+          : '图片已导入，AI 未完成识别，请在保存前补充属性',
         wearCount: 0,
-      }));
-      setUploadedItems(newItems);
-      setIsAnalyzing(false);
-    }, 2000);
+        confidence,
+      } satisfies ClothingItem;
+    }));
+
+    const newItems = results
+      .filter((result): result is PromiseFulfilledResult<ClothingItem> => result.status === 'fulfilled')
+      .map(result => result.value);
+    setUploadedItems(newItems);
+    setIsAnalyzing(false);
+    if (newItems.some(item => (item.confidence || 0) < 0.6)) {
+      toast.warning('部分图片未能完成识别，请确认分类和属性');
+    }
+    e.target.value = '';
   };
 
   const handleConfirmUpload = () => {
@@ -178,41 +234,42 @@ export default function WardrobePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with breathing room */}
-      <header className="sticky top-0 z-40 glass-surface border-b border-border/40">
-        <div className="px-4 pt-[env(safe-area-inset-top)]">
-          {/* Layer 1: Search Toggle + Title + View Mode */}
-          <div className="flex items-center gap-3 h-14">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSearch(!showSearch)}
-              aria-label={showSearch ? '关闭搜索' : '打开搜索'}
-              className={`rounded-xl ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-            >
-              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-            </Button>
-            <div className="flex-1" />
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(v) => v && setViewMode(v as 'items' | 'outfits')}
-              variant="outline"
-              className="bg-muted/80 rounded-xl p-1"
-            >
-              <ToggleGroupItem value="items" className="gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
-                <Shirt className="w-3.5 h-3.5" />
-                单品
-              </ToggleGroupItem>
-              <ToggleGroupItem value="outfits" className="gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
-                <Sparkles className="w-3.5 h-3.5" />
-                搭配
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-
-          {/* Layer 2: Search (collapsible) + Category Chips */}
-          <div className={`overflow-hidden transition-all duration-200 ${showSearch ? 'max-h-24 pb-3' : 'max-h-12 pb-3'}`}>
+      <PageHeader
+        title="我的衣橱"
+        description={`${wardrobeItems.length} 件单品 · ${storeOutfits.length} 套搭配`}
+        leading={(
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowSearch(!showSearch)}
+            aria-label={showSearch ? '关闭搜索' : '打开搜索'}
+            className={showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}
+          >
+            {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+          </Button>
+        )}
+        actions={(
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(v) => v && setViewMode(v as 'items' | 'outfits')}
+            variant="outline"
+            size="sm"
+            className="bg-muted/80 p-1"
+          >
+            <ToggleGroupItem value="items" className="gap-1.5 rounded-md px-3 text-xs data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+              <Shirt className="w-3.5 h-3.5" />
+              单品
+            </ToggleGroupItem>
+            <ToggleGroupItem value="outfits" className="gap-1.5 rounded-md px-3 text-xs data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+              搭配
+            </ToggleGroupItem>
+          </ToggleGroup>
+        )}
+      >
+        {/* Layer 2: Search (collapsible) + Category Filters */}
+        <div className={`overflow-hidden transition-all duration-200 ${showSearch ? 'max-h-24 pb-3' : 'max-h-12 pb-3'}`}>
             {showSearch && (
               <div className="relative mb-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -220,28 +277,36 @@ export default function WardrobePage() {
                   placeholder="搜索衣物名称、颜色..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 bg-muted/50 border-none text-sm"
+                  className="pl-9 h-10 bg-muted/50 border-none text-sm"
                   autoFocus
                 />
               </div>
             )}
-            {/* Category Chips with scroll hint */}
+            {/* Category filters with scroll hint */}
             <div className="relative">
               <div
                 ref={categoryScrollRef}
                 className="flex items-center gap-2 overflow-x-auto no-scrollbar"
               >
+                <ToggleGroup
+                  type="single"
+                  value={activeCategory}
+                  onValueChange={(value) => value && setActiveCategory(value)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
                 {CATEGORIES.map((cat) => (
-                  <Badge
+                  <ToggleGroupItem
                     key={cat.key}
-                    variant={activeCategory === cat.key ? 'default' : 'outline'}
-                    className="flex items-center gap-1 px-3 min-h-[36px] py-1.5 rounded-full text-sm whitespace-nowrap cursor-pointer shrink-0"
-                    onClick={() => setActiveCategory(cat.key)}
+                    value={cat.key}
+                    className="h-10 min-w-fit gap-1 rounded-full px-3 text-sm whitespace-nowrap"
                   >
                     {cat.label}
                     <span className="text-xs opacity-70">{itemCounts[cat.key] || 0}</span>
-                  </Badge>
+                  </ToggleGroupItem>
                 ))}
+                </ToggleGroup>
               </div>
               {/* Scroll hint gradient */}
               {showScrollHint && (
@@ -249,8 +314,7 @@ export default function WardrobePage() {
               )}
             </div>
           </div>
-        </div>
-      </header>
+      </PageHeader>
 
       {/* Content */}
       <div className="px-4 pt-5 pb-6">
@@ -278,6 +342,11 @@ export default function WardrobePage() {
                       {STATUS_CONFIG[item.status]?.label || item.status}
                     </Badge>
                   )}
+                  {item.status === 'available' && item.confidence !== undefined && item.confidence < 0.6 && (
+                    <Badge variant="outline" className="absolute top-2 left-2 border-warning/40 bg-warning-bg/90 text-[10px] text-warning-fg">
+                      待确认
+                    </Badge>
+                  )}
 
                   {/* Color Indicator */}
                   <div className="absolute top-2 right-2 w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: item.primaryColor }} />
@@ -296,20 +365,17 @@ export default function WardrobePage() {
               ))}
             </div>
           ) : (
-            /* Empty State with Illustration */
-            <div className="flex flex-col items-center justify-center py-16">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/empty-wardrobe.jpeg" alt="衣橱为空" className="w-40 h-40 object-contain mb-4 opacity-80" />
-              <p className="text-sm text-muted-foreground mb-2">
-                {searchQuery ? '没有找到匹配的衣物' : '衣橱还是空的'}
-              </p>
-              {!searchQuery && (
-                <Button onClick={() => setIsUploadSheetOpen(true)} className="bg-primary hover:bg-primary-hover mt-2">
-                  <Plus className="w-4 h-4 mr-2" />
+            <EmptyState
+              imageSrc="/empty-wardrobe.jpeg"
+              title={searchQuery ? '没有找到匹配的衣物' : '衣橱还是空的'}
+              description={searchQuery ? '试试更换关键词或筛选条件' : '添加衣物后，AI 才能根据你的真实衣橱进行搭配'}
+              action={!searchQuery ? (
+                <Button onClick={() => setIsUploadSheetOpen(true)}>
+                  <Plus className="w-4 h-4" />
                   添加第一件衣物
                 </Button>
-              )}
-            </div>
+              ) : undefined}
+            />
           )
         ) : (
           /* Outfits Grid */
@@ -363,15 +429,17 @@ export default function WardrobePage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/empty-styling.jpeg" alt="暂无搭配" className="w-40 h-40 object-contain mb-4 opacity-80" />
-              <p className="text-sm text-muted-foreground mb-2">还没有保存的搭配</p>
-              <Button onClick={() => router.push('/ai-styling')} className="bg-primary hover:bg-primary-hover mt-2">
-                <Sparkles className="w-4 h-4 mr-2" />
-                去创建搭配
-              </Button>
-            </div>
+            <EmptyState
+              imageSrc="/empty-styling.jpeg"
+              title="还没有保存的搭配"
+              description="先让 AI 根据场合和天气生成一套搭配"
+              action={(
+                <Button onClick={() => router.push('/ai-styling')}>
+                  <Sparkles className="w-4 h-4" />
+                  去创建搭配
+                </Button>
+              )}
+            />
           )
         )}
       </div>
@@ -379,9 +447,10 @@ export default function WardrobePage() {
       {/* FAB - with scroll offset and view-mode awareness */}
       <Button
         onClick={() => viewMode === 'items' ? setIsUploadSheetOpen(true) : router.push('/ai-styling')}
+        aria-label={viewMode === 'items' ? '添加衣物' : '创建搭配'}
         className="fixed z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:bg-primary-hover"
         style={{
-          bottom: `calc(6rem + ${fabOffset}px)`,
+          bottom: `calc(4.5rem + env(safe-area-inset-bottom) + ${fabOffset}px)`,
           right: 'max(1rem, calc((100vw - 36rem) / 2 + 1rem))',
         }}
       >
@@ -647,7 +716,7 @@ export default function WardrobePage() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
-        <AlertDialogContent className="rounded-xl">
+        <AlertDialogContent className="rounded-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
@@ -668,7 +737,7 @@ export default function WardrobePage() {
 
       {/* Upload Sheet */}
       <Sheet open={isUploadSheetOpen} onOpenChange={setIsUploadSheetOpen}>
-        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+        <SheetContent side="bottom" className="h-auto rounded-t-lg">
           <SheetHeader>
             <SheetTitle>添加衣物</SheetTitle>
           </SheetHeader>
@@ -702,7 +771,7 @@ export default function WardrobePage() {
               <div className="space-y-4">
                 {isAnalyzing ? (
                   <div className="flex flex-col items-center py-8">
-                    <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                    <Spinner className="size-8 text-primary" />
                     <p className="mt-4 text-sm text-muted-foreground">AI 正在识别衣物...</p>
                   </div>
                 ) : (
@@ -741,7 +810,7 @@ export default function WardrobePage() {
 
       {/* Outfit Detail Sheet */}
       <Sheet open={!!selectedOutfit} onOpenChange={() => setSelectedOutfit(null)}>
-        <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
+        <SheetContent side="bottom" className="h-[80vh] rounded-t-lg">
           <SheetHeader>
             <SheetTitle>{selectedOutfit?.name || '搭配详情'}</SheetTitle>
           </SheetHeader>
